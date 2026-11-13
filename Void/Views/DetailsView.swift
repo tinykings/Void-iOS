@@ -52,7 +52,6 @@ struct DetailsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .principal) { Text("").accessibilityHidden(true) } }
         .voidScreen()
-        .sheet(item: $playing) { TrailerPlayer(video: $0) }
         .task(id: seed.key) { await load() }
     }
 
@@ -270,26 +269,32 @@ struct DetailsView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 10) {
                         ForEach(Array(videos)) { video in
-                            Button { playing = video } label: {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    PosterImage(path: video.youTubeThumbnailURL?.absoluteString)
-                                        .frame(width: 240, height: 135)
+                            VStack(alignment: .leading, spacing: 6) {
+                                // Tapping the thumbnail swaps in the player right there.
+                                if playing == video {
+                                    YouTubeEmbed(key: video.key)
+                                        .frame(width: 300, height: 169)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
-                                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.voidBorder))
-                                        .overlay {
-                                            Image(systemName: "play.fill")
-                                                .font(.title3)
-                                                .foregroundStyle(.white)
-                                                .frame(width: 48, height: 48)
-                                                .background(.black.opacity(0.55), in: Circle())
-                                        }
-                                    Text(video.name).font(.caption.weight(.semibold)).lineLimit(2)
-                                        .foregroundStyle(.primary)
+                                } else {
+                                    Button { playing = video } label: {
+                                        PosterImage(path: video.youTubeThumbnailURL?.absoluteString)
+                                            .frame(width: 300, height: 169)
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.voidBorder))
+                                            .overlay {
+                                                Image(systemName: "play.fill")
+                                                    .font(.title3)
+                                                    .foregroundStyle(.white)
+                                                    .frame(width: 48, height: 48)
+                                                    .background(.black.opacity(0.55), in: Circle())
+                                            }
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Play \(video.name)")
                                 }
-                                .frame(width: 240, alignment: .leading)
+                                Text(video.name).font(.caption.weight(.semibold)).lineLimit(2)
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Play \(video.name)")
+                            .frame(width: 300, alignment: .leading)
                         }
                     }
                 }
@@ -360,33 +365,7 @@ struct DetailsView: View {
     }
 }
 
-// Plays a YouTube trailer in the app through YouTube's privacy-enhanced embed.
-struct TrailerPlayer: View {
-    let video: Video
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                YouTubeEmbed(key: video.key)
-                    .aspectRatio(16 / 9, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                if let url = video.youTubeURL {
-                    Link(destination: url) { Label("Open in YouTube", systemImage: "arrow.up.right") }
-                        .font(.footnote)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(16)
-            .navigationTitle(video.name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .voidScreen()
-        }
-        .presentationDetents([.medium, .large])
-    }
-}
-
+// YouTube's privacy-enhanced embed, playing inline in the page.
 private struct YouTubeEmbed: UIViewRepresentable {
     // Already checked against YouTube's ID characters by `Video.youTubeURL`.
     let key: String
@@ -414,6 +393,23 @@ private struct YouTubeEmbed: UIViewRepresentable {
     func updateUIView(_ view: WKWebView, context: Context) {}
 }
 
+// Unaired episode summaries look encoded until revealed: each letter and digit becomes
+// a stand-in glyph, spaces and punctuation stay, and the same text always scrambles the
+// same way so it doesn't flicker as the view redraws.
+enum Scramble {
+    private static let glyphs = Array("ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#%&@$")
+
+    static func text(_ text: String) -> String {
+        var state: UInt64 = 0x9E3779B97F4A7C15
+        return String(text.map { character in
+            guard character.isLetter || character.isNumber else { return character }
+            for scalar in character.unicodeScalars { state = (state ^ UInt64(scalar.value)) &* 0x100000001B3 }
+            state = state &* 6364136223846793005 &+ 1442695040888963407
+            return glyphs[Int((state >> 33) % UInt64(glyphs.count))]
+        })
+    }
+}
+
 struct ProviderLogo: View {
     let provider: WatchProvider
     var size: CGFloat = 44
@@ -433,6 +429,7 @@ struct SeasonView: View {
     @EnvironmentObject private var store: LibraryStore
     @State private var details: SeasonDetails?
     @State private var failed = false
+    @State private var revealed: Set<Int> = []
 
     var body: some View {
         List {
@@ -450,10 +447,27 @@ struct SeasonView: View {
                             }
                         }
                         if let overview = episode.overview, !overview.isEmpty {
-                            Text(overview).font(.footnote).foregroundStyle(Color.voidSilver).lineLimit(4)
+                            if hidden(episode) {
+                                Text(Scramble.text(overview))
+                                    .font(.system(.footnote, design: .monospaced))
+                                    .foregroundStyle(Color.voidSilver.opacity(0.7))
+                                    .lineLimit(4)
+                            } else {
+                                Text(overview).font(.footnote).foregroundStyle(Color.voidSilver).lineLimit(4)
+                            }
                         }
                     }
                     .padding(.vertical, 4)
+                    .contentShape(Rectangle())
+                    // Not aired yet: the still and summary stay hidden until tapped.
+                    .onTapGesture {
+                        guard !aired(episode) else { return }
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            if revealed.contains(episode.id) { revealed.remove(episode.id) } else { revealed.insert(episode.id) }
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityHint(hidden(episode) ? "Hidden until it airs. Double-tap to reveal." : "")
                     .listRowBackground(Color.voidSurface)
                 }
             } else if failed {
@@ -476,11 +490,14 @@ struct SeasonView: View {
         return days <= 0
     }
 
-    // The episode's still once it has aired. Before that, a blurred image with a clock,
-    // so the still (or the season poster, if there's no still yet) can't spoil anything.
+    private func hidden(_ episode: Episode) -> Bool { !aired(episode) && !revealed.contains(episode.id) }
+
+    // The episode's still once it has aired or been tapped. Before that, a blurred image
+    // with a clock, so the still (or the season poster, if there's no still yet) can't
+    // spoil anything.
     private func still(_ episode: Episode) -> some View {
-        let isOut = aired(episode)
-        return PosterImage(path: episode.stillPath ?? (isOut ? nil : season.posterPath), size: "w300")
+        let isOut = !hidden(episode)
+        return PosterImage(path: episode.stillPath ?? (aired(episode) ? nil : season.posterPath), size: "w300")
             .blur(radius: isOut ? 0 : 14)
             .overlay {
                 if !isOut {
