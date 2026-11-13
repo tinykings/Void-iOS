@@ -97,11 +97,19 @@ struct SearchResultCard: View {
                 PosterImage(path: media.posterPath)
                     .aspectRatio(2 / 3, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(list == .playlist ? Color.voidCyan : Color.voidBorder))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(list == .playlist ? Color.voidCyan : list == .history ? Color.voidHistory : Color.voidBorder))
                     .overlay(alignment: .topTrailing) {
-                        if list == .playlist || list == .history {
-                            Image(systemName: list == .playlist ? "plus.circle.fill" : "checkmark.circle.fill")
+                        if list == .playlist {
+                            Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.voidCyan).padding(6).shadow(radius: 3)
+                        } else if list == .history {
+                            // The footer's History icon, in History's green.
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(Color.voidOnAccent)
+                                .frame(width: 18, height: 18)
+                                .background(Color.voidHistory, in: Circle())
+                                .padding(6).shadow(radius: 3)
                         }
                     }
                 Text(media.title).font(.caption.weight(.semibold)).lineLimit(2)

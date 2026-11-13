@@ -7,6 +7,8 @@ extension Color {
     static let voidSurface = adaptive(light: 0xFFFFFF, dark: 0x1A1D23)
     static let voidCyan = adaptive(light: 0x0891B2, dark: 0x22D3EE)
     static let voidSilver = adaptive(light: 0x64748B, dark: 0x94A3B8)
+    // Things already watched or played (History), set apart from the cyan Playlist.
+    static let voidHistory = adaptive(light: 0x059669, dark: 0x34D399)
     static let voidBorder = adaptive(light: 0x000000, dark: 0xFFFFFF, lightAlpha: 0.1, darkAlpha: 0.1)
     // Text and icons on a cyan fill.
     static let voidOnAccent = adaptive(light: 0xFFFFFF, dark: 0x0F1115)
