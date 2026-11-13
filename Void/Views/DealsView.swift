@@ -52,7 +52,7 @@ struct DealsView: View {
                 }
                 ForEach(deals, id: \.media.key) { deal in
                     HStack(spacing: 12) {
-                        NavigationLink(value: Route.media(deal.item)) {
+                        NavigationLink(value: Route.media(deal.media)) {
                             HStack(spacing: 12) {
                                 PosterImage(path: deal.media.posterPath, size: "w185")
                                     .frame(width: 36, height: 54)
