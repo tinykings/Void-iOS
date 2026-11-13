@@ -437,23 +437,23 @@ struct SeasonView: View {
     var body: some View {
         List {
             if let details {
-                if let overview = details.overview, !overview.isEmpty {
-                    Text(overview).font(.subheadline).foregroundStyle(Color.voidSilver).listRowBackground(Color.voidSurface)
-                }
                 ForEach(details.episodes) { episode in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("E\(episode.episodeNumber)").font(.voidReadout).foregroundStyle(Color.voidCyan)
-                            Text(episode.name).font(.subheadline.weight(.semibold))
-                            Spacer()
-                            if let date = DateText.short(episode.airDate) {
-                                Text(date).font(.voidReadout).foregroundStyle(Color.voidSilver)
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top, spacing: 12) {
+                            still(episode)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("E\(episode.episodeNumber)").font(.voidReadout).foregroundStyle(Color.voidCyan)
+                                Text(episode.name).font(.subheadline.weight(.semibold)).lineLimit(2)
+                                if let date = DateText.short(episode.airDate) {
+                                    Text(date).font(.voidReadout).foregroundStyle(Color.voidSilver)
+                                }
                             }
                         }
                         if let overview = episode.overview, !overview.isEmpty {
                             Text(overview).font(.footnote).foregroundStyle(Color.voidSilver).lineLimit(4)
                         }
                     }
+                    .padding(.vertical, 4)
                     .listRowBackground(Color.voidSurface)
                 }
             } else if failed {
@@ -469,6 +469,29 @@ struct SeasonView: View {
             let api = store.api
             do { details = try await api.season(showID: showID, number: season.seasonNumber) } catch { failed = true }
         }
+    }
+
+    private func aired(_ episode: Episode) -> Bool {
+        guard let days = DateText.days(until: episode.airDate) else { return false }
+        return days <= 0
+    }
+
+    // The episode's still once it has aired. Before that, a blurred image with a clock,
+    // so the still (or the season poster, if there's no still yet) can't spoil anything.
+    private func still(_ episode: Episode) -> some View {
+        let isOut = aired(episode)
+        return PosterImage(path: episode.stillPath ?? (isOut ? nil : season.posterPath), size: "w300")
+            .blur(radius: isOut ? 0 : 14)
+            .overlay {
+                if !isOut {
+                    Color.black.opacity(0.25)
+                    Image(systemName: "clock").font(.headline).foregroundStyle(.white)
+                }
+            }
+            .frame(width: 128, height: 72)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.voidBorder))
+            .accessibilityHidden(true)
     }
 }
 
