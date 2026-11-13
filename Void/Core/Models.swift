@@ -101,6 +101,12 @@ struct Video: Codable, Hashable, Identifiable, Sendable {
               key.range(of: "^[A-Za-z0-9_-]{1,64}$", options: .regularExpression) != nil else { return nil }
         return URL(string: "https://www.youtube.com/watch?v=\(key)")
     }
+
+    // YouTube's still for the video, 480x360 with the 16:9 frame letterboxed inside.
+    var youTubeThumbnailURL: URL? {
+        guard youTubeURL != nil else { return nil }
+        return URL(string: "https://i.ytimg.com/vi/\(key)/hqdefault.jpg")
+    }
 }
 
 struct WatchProvider: Codable, Hashable, Identifiable, Sendable {

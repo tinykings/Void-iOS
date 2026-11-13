@@ -25,6 +25,7 @@ struct DetailsView: View {
                     Text("Couldn't load all the details. Pull down to try again.")
                         .font(.footnote).foregroundStyle(Color.voidSilver)
                 }
+                if isGame { bestPrice }
                 if !shown.overview.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         if let tagline = shown.tagline { Text(tagline).font(.subheadline.italic()).foregroundStyle(Color.voidSilver) }
@@ -32,12 +33,12 @@ struct DetailsView: View {
                     }
                 }
                 if shown.mediaType == .tv { nextEpisode }
-                if isGame { gameInfo } else { streaming }
+                if isGame { gameInfo }
                 trailers
                 castRow
                 if shown.mediaType == .tv && !shown.seasons.isEmpty { seasons }
                 screenshots
-                Text(isGame ? "Game data from IGDB and HowLongToBeat; prices from GG.deals." : "Data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.")
+                Text(isGame ? "Game data from IGDB and HowLongToBeat; prices from GG.deals." : "Data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming data from JustWatch.")
                     .font(.caption2).foregroundStyle(Color.voidSilver.opacity(0.7))
             }
             .padding(16)
@@ -90,6 +91,13 @@ struct DetailsView: View {
                 if shown.voteAverage > 0 {
                     Label(String(format: "%.1f", shown.voteAverage), systemImage: "star.fill")
                         .font(.voidReadout).foregroundStyle(Color.voidCyan)
+                }
+                if isGame {
+                    if !shown.platforms.isEmpty {
+                        Text(shown.platforms.joined(separator: ", ")).font(.footnote).foregroundStyle(Color.voidSilver)
+                    }
+                } else {
+                    streaming
                 }
             }
         }
@@ -167,37 +175,31 @@ struct DetailsView: View {
         }
     }
 
+    // Where it streams, under the rating: service logos linking to JustWatch.
     @ViewBuilder private var streaming: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionTitle("Stream")
-            if let providers {
-                if providers.isEmpty {
-                    Text("Not streaming on a subscription service in the US.").font(.subheadline).foregroundStyle(Color.voidSilver)
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(providers) { provider in
-                                if let url = LibraryRules.justWatchURL(title: shown.title) {
-                                    Link(destination: url) { ProviderLogo(provider: provider) }
-                                        .accessibilityLabel("\(provider.providerName), open on JustWatch")
-                                }
+        if let providers {
+            if providers.isEmpty {
+                Text("Not on a US streaming service").font(.footnote).foregroundStyle(Color.voidSilver)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(providers) { provider in
+                            if let url = LibraryRules.justWatchURL(title: shown.title) {
+                                Link(destination: url) { ProviderLogo(provider: provider, size: 34) }
+                                    .accessibilityLabel("\(provider.providerName), open on JustWatch")
                             }
                         }
                     }
-                    Text("Streaming data from JustWatch.").font(.caption2).foregroundStyle(Color.voidSilver.opacity(0.7))
+                    .padding(1)
                 }
-            } else {
-                ProgressView()
             }
+        } else {
+            ProgressView().controlSize(.small)
         }
     }
 
     @ViewBuilder private var gameInfo: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if !shown.platforms.isEmpty {
-                sectionTitle("Platforms")
-                Text(shown.platforms.joined(separator: ", ")).font(.subheadline)
-            }
             if !playtimes.isEmpty {
                 sectionTitle("How long to beat")
                 HStack(spacing: 10) {
@@ -212,7 +214,17 @@ struct DetailsView: View {
                     }
                 }
             }
-            if let price, let formatted = LibraryRules.formatPrice(price), let url = URL(string: price.url), url.scheme == "https" {
+            if !gameLinks.isEmpty {
+                HStack(spacing: 16) {
+                    ForEach(gameLinks, id: \.label) { link in Link(link.label, destination: link.url).font(.footnote) }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var bestPrice: some View {
+        if let price, let formatted = LibraryRules.formatPrice(price), let url = URL(string: price.url), url.scheme == "https" {
+            VStack(alignment: .leading, spacing: 8) {
                 sectionTitle("Best price")
                 Link(destination: url) {
                     HStack {
@@ -224,11 +236,6 @@ struct DetailsView: View {
                     }
                     .padding(12)
                     .background(Color.voidSurface, in: RoundedRectangle(cornerRadius: 8))
-                }
-            }
-            if !gameLinks.isEmpty {
-                HStack(spacing: 16) {
-                    ForEach(gameLinks, id: \.label) { link in Link(link.label, destination: link.url).font(.footnote) }
                 }
             }
         }
@@ -258,9 +265,30 @@ struct DetailsView: View {
         if !videos.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 sectionTitle("Trailers")
-                ForEach(Array(videos)) { video in
-                    Link(destination: video.youTubeURL!) {
-                        Label(video.name, systemImage: "play.rectangle.fill").font(.subheadline).lineLimit(1)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 10) {
+                        ForEach(Array(videos)) { video in
+                            Link(destination: video.youTubeURL!) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    PosterImage(path: video.youTubeThumbnailURL?.absoluteString)
+                                        .frame(width: 240, height: 135)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.voidBorder))
+                                        .overlay {
+                                            Image(systemName: "play.fill")
+                                                .font(.title3)
+                                                .foregroundStyle(.white)
+                                                .frame(width: 48, height: 48)
+                                                .background(.black.opacity(0.55), in: Circle())
+                                        }
+                                    Text(video.name).font(.caption.weight(.semibold)).lineLimit(2)
+                                        .foregroundStyle(.primary)
+                                }
+                                .frame(width: 240, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Play \(video.name) on YouTube")
+                        }
                     }
                 }
             }
