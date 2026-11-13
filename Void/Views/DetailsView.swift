@@ -24,8 +24,11 @@ struct DetailsView: View {
                 header
                 actions
                 if failed && media == nil {
-                    Text("Couldn't load all the details. Pull down to try again.")
-                        .font(.footnote).foregroundStyle(Color.voidSilver)
+                    // No pull-to-refresh: pulling down drags the details card away.
+                    HStack {
+                        Text("Couldn't load all the details.").font(.footnote).foregroundStyle(Color.voidSilver)
+                        Button("Try Again") { Task { await load() } }.font(.footnote.weight(.semibold))
+                    }
                 }
                 if isGame { bestPrice }
                 if !shown.overview.isEmpty {
@@ -45,7 +48,6 @@ struct DetailsView: View {
             }
             .padding(16)
         }
-        .refreshable { await load() }
         // The title stays for the back button and history menu, but isn't drawn: the
         // header already shows the name.
         .navigationTitle(shown.title)
