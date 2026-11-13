@@ -22,45 +22,41 @@ struct StreamView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                if items.isEmpty {
-                    Text("Add movies and shows to your Playlist to see where they stream.")
-                        .foregroundStyle(Color.voidSilver).listRowBackground(Color.voidSurface)
-                }
-                ForEach(groups, id: \.provider.providerID) { group in
-                    Section {
-                        ForEach(group.items, id: \.key) { item in
-                            row(item)
-                        }
-                    } header: {
-                        HStack(spacing: 10) {
-                            ProviderLogo(provider: group.provider, size: 28)
-                            Text(group.provider.providerName).font(.headline).foregroundStyle(.white).textCase(nil)
-                            Spacer()
-                            Text("\(group.items.count) of \(items.count)").font(.voidReadout).foregroundStyle(Color.voidCyan)
-                        }
-                    }
-                }
-                if !notStreaming.isEmpty {
-                    Section("Not on a subscription service") {
-                        ForEach(notStreaming, id: \.key) { item in row(item) }
-                    }
-                }
-                if loading {
-                    ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear)
-                }
+        List {
+            if items.isEmpty {
+                Text("Add movies and shows to your Playlist to see where they stream.")
+                    .foregroundStyle(Color.voidSilver).listRowBackground(Color.voidSurface)
+            }
+            ForEach(groups, id: \.provider.providerID) { group in
                 Section {
-                    Text("US streaming data from JustWatch, through TMDB. Tap a title for details.")
-                        .font(.caption2).foregroundStyle(Color.voidSilver).listRowBackground(Color.clear)
+                    ForEach(group.items, id: \.key) { item in
+                        row(item)
+                    }
+                } header: {
+                    HStack(spacing: 10) {
+                        ProviderLogo(provider: group.provider, size: 28)
+                        Text(group.provider.providerName).font(.headline).foregroundStyle(.white).textCase(nil)
+                        Spacer()
+                        Text("\(group.items.count) of \(items.count)").font(.voidReadout).foregroundStyle(Color.voidCyan)
+                    }
                 }
             }
-            .navigationTitle("Stream")
-            .refreshable { await load() }
-            .voidRoutes()
-            .voidScreen()
-            .task(id: items.map(\.key)) { await load() }
+            if !notStreaming.isEmpty {
+                Section("Not on a subscription service") {
+                    ForEach(notStreaming, id: \.key) { item in row(item) }
+                }
+            }
+            if loading {
+                ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear)
+            }
+            Section {
+                Text("US streaming data from JustWatch, through TMDB. Tap a title for details.")
+                    .font(.caption2).foregroundStyle(Color.voidSilver).listRowBackground(Color.clear)
+            }
         }
+        .navigationTitle("Stream")
+        .refreshable { await load() }
+        .task(id: items.map(\.key)) { await load() }
     }
 
     private func row(_ item: SyncedItem) -> some View {

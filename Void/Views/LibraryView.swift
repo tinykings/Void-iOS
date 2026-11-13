@@ -1,14 +1,13 @@
 import SwiftUI
 
-// The Playlist or History: a poster grid with a type filter.
+// The Playlist or History as a poster grid, filtered from the footer.
 struct LibraryView: View {
     let list: ListState
+    var filter: MediaType?
+    var favoritesOnly = false
     @EnvironmentObject private var store: LibraryStore
-    @State private var filter: MediaType?
-    @State private var favoritesOnly = false
-    @State private var showSettings = false
 
-    private var title: String { list == .playlist ? "Playlist" : "History" }
+    private var title: String { favoritesOnly ? "Favorites" : list == .playlist ? "Playlist" : "History" }
 
     private var items: [SyncedItem] {
         let all = store.entries(list, type: filter)
@@ -16,85 +15,33 @@ struct LibraryView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    filterBar
-                    if items.isEmpty {
-                        emptyState
-                    } else {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10)], spacing: 14) {
-                            ForEach(items, id: \.key) { item in
-                                PosterCard(item: item, media: store.media(for: item), showsUpcoming: list == .playlist)
-                            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if items.isEmpty {
+                    emptyState
+                } else {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10)], spacing: 14) {
+                        ForEach(items, id: \.key) { item in
+                            PosterCard(item: item, media: store.media(for: item), showsUpcoming: list == .playlist)
                         }
                     }
-                    if !store.sync.status.isEmpty && store.sync.status.hasPrefix("Sync failed") {
-                        Text(store.sync.status).font(.footnote).foregroundStyle(Color.voidSilver)
-                    }
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
-            }
-            .refreshable { await store.refresh() }
-            .navigationTitle(title)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                        .accessibilityLabel("Settings")
+                if store.sync.status.hasPrefix("Sync failed") {
+                    Text(store.sync.status).font(.footnote).foregroundStyle(Color.voidSilver)
                 }
             }
-            .sheet(isPresented: $showSettings) { SettingsView() }
-            .voidRoutes()
-            .voidScreen()
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
-    }
-
-    private var types: [MediaType] { MediaType.allCases.filter(store.enabledTypes.contains) }
-
-    private var filterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                if types.count > 1 {
-                    chip("All", selected: filter == nil) { filter = nil }
-                    ForEach(types, id: \.self) { type in
-                        chip(type.label, selected: filter == type) { filter = filter == type ? nil : type }
-                    }
-                }
-                if list == .history {
-                    chip("Favorites", systemImage: "heart.fill", selected: favoritesOnly) { favoritesOnly.toggle() }
-                }
-                Spacer(minLength: 0)
-                Text("\(items.count)").font(.voidReadout).foregroundStyle(Color.voidSilver)
-            }
-        }
-        .onChange(of: store.enabledTypes) { _, enabled in
-            if let current = filter, !enabled.contains(current) { filter = nil }
-        }
-    }
-
-    private func chip(_ text: String, systemImage: String? = nil, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                if let systemImage { Image(systemName: systemImage) }
-                Text(text.uppercased())
-            }
-            .font(.voidLabel)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .foregroundStyle(selected ? Color.voidBackground : Color.voidSilver)
-            .background(selected ? Color.voidCyan : Color.voidSurface, in: Capsule())
-            .overlay(Capsule().stroke(Color.voidBorder))
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .refreshable { await store.refresh() }
+        .navigationTitle(title)
     }
 
     private var emptyState: some View {
         VStack(spacing: 8) {
             Image(systemName: list == .playlist ? "sparkles.tv" : "clock")
                 .font(.largeTitle).foregroundStyle(Color.voidSilver.opacity(0.6))
-            Text(list == .playlist ? "Nothing on your Playlist" : "Nothing in History")
+            Text(list == .playlist ? "Nothing on your Playlist" : favoritesOnly ? "No Favorites" : "Nothing in History")
                 .font(.headline)
             Text(list == .playlist
                  ? "Search for movies, shows and games to add them."

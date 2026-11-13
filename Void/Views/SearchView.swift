@@ -9,6 +9,7 @@ struct SearchView: View {
     @State private var trending: [Media] = []
     @State private var loading = false
     @State private var message: String?
+    @Environment(\.dismiss) private var dismiss
 
     private var trimmed: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var shown: [Media] { (trimmed.isEmpty ? trending : results).filter { store.enabledTypes.contains($0.mediaType) } }
@@ -36,6 +37,9 @@ struct SearchView: View {
             .navigationTitle("Search")
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Movies, shows and games")
             .autocorrectionDisabled()
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
             .voidRoutes()
             .voidScreen()
             .task(id: trimmed) { await search(trimmed) }
