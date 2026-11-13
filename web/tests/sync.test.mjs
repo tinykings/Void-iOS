@@ -11,7 +11,7 @@ import { fakeCloudKit } from "./fake-cloudkit.mjs";
 const fixture = JSON.parse(readFileSync(new URL("../../Tests/fixtures/void-item-record.json", import.meta.url)));
 const show = { source: "tmdb", mediaType: "tv", id: 1399, title: "Game of Thrones", posterPath: "/got.jpg" };
 const showName = "item.tmdb.tv.1399";
-const config = { container: "iCloud.com.tinykings.Void", environment: "production", apiToken: "t" };
+const config = { container: "iCloud.com.tinykings.void", environment: "production", apiToken: "t" };
 
 test("decodes the fixture iOS decodes, and writes the same fields back", () => {
   const item = decodeRecord(fixture);

@@ -5,7 +5,7 @@ Status: in use by iOS (`Void/Core/SyncLibrary.swift`, `Void/Core/SyncCodec.swift
 read and write exactly this format. The design follows Royal's sync
 (tinykings/Royal-iOS `docs/sync-schema.md`), with conflict handling per field.
 
-Container: **`iCloud.com.tinykings.Void`**. For Production, the record type below
+Container: **`iCloud.com.tinykings.void`**. For Production, the record type below
 must be created in Development (running a Debug build creates it) and deployed to
 Production in CloudKit Console. Production never creates record types.
 

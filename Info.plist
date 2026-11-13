@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>VoidCloudKitContainer</key>
-	<string>iCloud.com.tinykings.Void</string>
+	<string>iCloud.com.tinykings.void</string>
 	<key>VoidCloudKitEnvironment</key>
 	<string>$(VOID_CLOUDKIT_ENVIRONMENT)</string>
 	<key>VoidAPIBaseURL</key>

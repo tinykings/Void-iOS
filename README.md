@@ -30,7 +30,7 @@ An iPhone app with a companion website, synced through your private iCloud.
 ## Build
 
 Open `Void.xcodeproj` in Xcode (iOS 17+). The target uses team `7F4K5N55BN`,
-bundle ID `com.tinykings.void` and container `iCloud.com.tinykings.Void`. Debug builds use
+bundle ID `com.tinykings.void` and container `iCloud.com.tinykings.void`. Debug builds use
 the CloudKit Development environment, Release builds Production (`VOID_CLOUDKIT_ENVIRONMENT`).
 The Worker's address is `VOID_API_BASE_URL` in the target's build settings.
 
@@ -43,7 +43,7 @@ cd worker && npm install && npm test
 ## Setup (once)
 
 1. **Apple Developer:** register the App ID `com.tinykings.void` with iCloud (CloudKit) and
-   the container `iCloud.com.tinykings.Void`. Xcode's automatic signing can do this.
+   the container `iCloud.com.tinykings.void`. Xcode's automatic signing can do this.
 2. **CloudKit schema:** run a Debug build on a device or simulator signed in to iCloud and
    add something; that creates the `VoidItem` record type in Development. In CloudKit
    Console, check its fields match `docs/sync-schema.md`, then **Deploy Schema Changes** to
@@ -51,7 +51,7 @@ cd worker && npm install && npm test
 3. **Worker:** `cd worker && npx wrangler secret put TMDB_READ_ACCESS_TOKEN`, then
    `npm run deploy`. It replaces the Worker the old webapp used, under the same name, and
    keeps serving it.
-4. **Website:** in CloudKit Console (container `iCloud.com.tinykings.Void`, Production)
+4. **Website:** in CloudKit Console (container `iCloud.com.tinykings.void`, Production)
    create a web API token with sign-in callback **URL Redirect** `https://void.tinyk.ing/`
    and allowed origin `void.tinyk.ing`, and put it in `web/site.mjs` (`SITE_CLOUDKIT.apiToken`).
    Point a DNS `CNAME` for `void` on `tinyk.ing` at `tinykings.github.io`, and in this

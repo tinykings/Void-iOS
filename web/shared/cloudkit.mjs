@@ -2,7 +2,7 @@
 
 // [void]'s container, always in Production (the environment TestFlight and App Store
 // builds use). The website's web API token is set in site.mjs.
-export const VOID_CONTAINER = "iCloud.com.tinykings.Void";
+export const VOID_CONTAINER = "iCloud.com.tinykings.void";
 const DATABASES = { "users/caller": "public", "records/modify": "private", "zones/modify": "private", "records/changes": "private" };
 // [void]'s synced data lives in one custom private zone, so clients can fetch
 // incremental changes with a sync token (the default zone can't).
