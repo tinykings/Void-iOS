@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var special: Special?
     @State private var showSearch = false
     @State private var showSettings = false
+    @State private var details: Media?
     @Namespace private var segment
 
     enum Special { case stream, deals }
@@ -29,6 +30,17 @@ struct ContentView: View {
             .toolbar(.hidden, for: .navigationBar)
             .voidRoutes()
             .voidScreen()
+            .environment(\.openDetails, OpenDetailsAction { details = $0 })
+        }
+        // Details come up as a card you drag down to dismiss; cast, seasons and other
+        // titles push inside it.
+        .sheet(item: $details) { media in
+            NavigationStack {
+                DetailsView(seed: media)
+                    .toolbar(.hidden, for: .navigationBar)
+                    .voidRoutes()
+            }
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showSearch) { SearchView() }
         .sheet(isPresented: $showSettings) { SettingsView() }

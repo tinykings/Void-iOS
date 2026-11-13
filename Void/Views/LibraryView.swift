@@ -76,7 +76,7 @@ struct PosterCard: View {
     }
 
     var body: some View {
-        NavigationLink(value: Route.media(media)) {
+        MediaLink(media: media) {
             VStack(alignment: .leading, spacing: 6) {
                 PosterImage(path: media.posterPath ?? item.image)
                     .aspectRatio(2 / 3, contentMode: .fit)

@@ -552,7 +552,7 @@ struct PersonView: View {
                 if !credits.isEmpty {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10, alignment: .top)], spacing: 14) {
                         ForEach(credits) { media in
-                            NavigationLink(value: Route.media(media)) {
+                            MediaLink(media: media) {
                                 VStack(alignment: .leading, spacing: 6) {
                                     PosterImage(path: media.posterPath)
                                         .aspectRatio(2 / 3, contentMode: .fit)

@@ -61,7 +61,7 @@ struct StreamView: View {
 
     private func row(_ item: SyncedItem) -> some View {
         let media = store.media(for: item)
-        return NavigationLink(value: Route.media(media)) {
+        return MediaLink(media: media) {
             HStack(spacing: 12) {
                 PosterImage(path: media.posterPath ?? item.image, size: "w185")
                     .frame(width: 36, height: 54)

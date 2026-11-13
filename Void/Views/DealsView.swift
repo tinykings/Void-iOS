@@ -49,7 +49,7 @@ struct DealsView: View {
             }
             ForEach(deals, id: \.media.key) { deal in
                 HStack(spacing: 12) {
-                    NavigationLink(value: Route.media(deal.media)) {
+                    MediaLink(media: deal.media) {
                         HStack(spacing: 12) {
                             PosterImage(path: deal.media.posterPath, size: "w185")
                                 .frame(width: 36, height: 54)
@@ -74,7 +74,7 @@ struct DealsView: View {
             if !unpriced.isEmpty && !loading {
                 Section("No Steam price") {
                     ForEach(unpriced, id: \.media.key) { game in
-                        NavigationLink(value: Route.media(game.media)) { Text(game.media.title) }
+                        MediaLink(media: game.media) { Text(game.media.title) }
                             .listRowBackground(Color.voidSurface)
                     }
                 }

@@ -92,7 +92,7 @@ struct SearchResultCard: View {
 
     var body: some View {
         let list = store.item(media.key)?.list
-        NavigationLink(value: Route.media(media)) {
+        MediaLink(media: media) {
             VStack(alignment: .leading, spacing: 6) {
                 PosterImage(path: media.posterPath)
                     .aspectRatio(2 / 3, contentMode: .fit)

@@ -40,6 +40,40 @@ enum Route: Hashable {
     case season(showID: Int, showTitle: String, season: SeasonSummary)
 }
 
+// Opens a title's details as a card over the main screen. Set only on the main screen;
+// inside a card (or Search) it's nil and links push within that card instead.
+struct OpenDetailsAction {
+    let open: (Media) -> Void
+    func callAsFunction(_ media: Media) { open(media) }
+}
+
+private struct OpenDetailsKey: EnvironmentKey {
+    static let defaultValue: OpenDetailsAction? = nil
+}
+
+extension EnvironmentValues {
+    var openDetails: OpenDetailsAction? {
+        get { self[OpenDetailsKey.self] }
+        set { self[OpenDetailsKey.self] = newValue }
+    }
+}
+
+// A link to a title's details: a card on the main screen, a push everywhere else.
+struct MediaLink<Label: View>: View {
+    let media: Media
+    @ViewBuilder let label: () -> Label
+    @Environment(\.openDetails) private var openDetails
+
+    var body: some View {
+        if let openDetails {
+            Button { openDetails(media) } label: { label().contentShape(Rectangle()) }
+                .buttonStyle(.plain)
+        } else {
+            NavigationLink(value: Route.media(media), label: label)
+        }
+    }
+}
+
 extension View {
     func voidRoutes() -> some View {
         navigationDestination(for: Route.self) { route in
