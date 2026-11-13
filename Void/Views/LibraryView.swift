@@ -20,7 +20,7 @@ struct LibraryView: View {
                 if items.isEmpty {
                     emptyState
                 } else {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10)], spacing: 14) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10, alignment: .top)], spacing: 14) {
                         ForEach(items, id: \.key) { item in
                             PosterCard(item: item, media: store.media(for: item), showsUpcoming: list == .playlist)
                         }

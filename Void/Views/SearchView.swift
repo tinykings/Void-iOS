@@ -24,7 +24,7 @@ struct SearchView: View {
                     if let message {
                         Text(message).font(.subheadline).foregroundStyle(Color.voidSilver)
                     }
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10)], spacing: 14) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10, alignment: .top)], spacing: 14) {
                         ForEach(shown, id: \.key) { media in
                             SearchResultCard(media: media)
                         }

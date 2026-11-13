@@ -414,7 +414,7 @@ struct PersonView: View {
                         .onTapGesture { expanded.toggle() }
                 }
                 if !credits.isEmpty {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10)], spacing: 14) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10, alignment: .top)], spacing: 14) {
                         ForEach(credits) { media in
                             NavigationLink(value: Route.media(media)) {
                                 VStack(alignment: .leading, spacing: 6) {
