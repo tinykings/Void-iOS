@@ -86,7 +86,7 @@ struct ContentView: View {
                         .font(.system(size: 18, weight: .medium))
                         .frame(width: 48, height: 48)
                         .foregroundStyle(Color.voidSilver)
-                        .contentShape(Rectangle())
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Search")
@@ -126,8 +126,8 @@ struct ContentView: View {
             .font(.system(size: 18, weight: .medium))
             .frame(width: 48, height: 48)
             .foregroundStyle(active ? Color.voidCyan : Color.voidSilver)
-            .background(active ? Color.voidCyan.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 10))
-            .contentShape(Rectangle())
+            .background(active ? Color.voidCyan.opacity(0.12) : .clear, in: Circle())
+            .contentShape(Circle())
     }
 
     // While Stream, Deals or Favorites is showing, the button clears it; otherwise it
