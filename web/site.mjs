@@ -3,7 +3,7 @@
 // rules are in shared/ and follow docs/sync-schema.md, as iOS does.
 import { CloudKitClient, CloudKitError, VOID_CONTAINER, appleSignInURL, callbackToken, describeCloudKitError } from "./shared/cloudkit.mjs";
 import { createApi } from "./shared/api.mjs";
-import { isInLocalDayWindow, needsReturnCheck, RETURN_WINDOW_DAYS, returnToPlaylist, togglePlaylist, toggleHistory, toggleFavorite, togglePurchased } from "./shared/library.mjs";
+import { isInLocalDayWindow, needsReturnCheck, RETURN_WINDOW_DAYS, returnToPlaylist, togglePlaylist, toggleHistory, toggleFavorite } from "./shared/library.mjs";
 import { accountLibraryKey, createLibrary, LIBRARY_KEY, SYNC_SETTINGS_KEY } from "./shared/store.mjs";
 import { runSync, SyncPausedError } from "./shared/sync-runner.mjs";
 import { RECORD_TYPE } from "./shared/sync.mjs";
@@ -152,7 +152,6 @@ export function createSite({ storage, pending, locks, fetcher, apiFetcher, confi
     togglePlaylist: media => change(state => togglePlaylist(state, media, now())),
     toggleHistory: media => change(state => toggleHistory(state, media, now())),
     toggleFavorite: name => change(state => toggleFavorite(state, name)),
-    togglePurchased: name => change(state => togglePurchased(state, name)),
 
     // Returns Apple's sign-in address to go to.
     beginSignIn: () => exclusive(async () => {

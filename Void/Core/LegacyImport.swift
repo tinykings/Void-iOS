@@ -25,7 +25,6 @@ enum LegacyImport {
         var release_date: String?
         var image: String?
         var rating: Int?
-        var isPurchased: Bool?
 
         var key: MediaKey? {
             let source = source ?? .default(for: media_type)
@@ -59,7 +58,7 @@ enum LegacyImport {
                 result.append(SyncedItem(
                     key: key, title: String(title.prefix(500)), image: SyncCodec.cleanImage(item.image),
                     releaseDate: release, list: list, addedAt: SyncCodec.iso(parseDate(item.date_added) ?? now),
-                    isFavorite: favorites.contains(key), isPurchased: key.type == .game && item.isPurchased == true,
+                    isFavorite: favorites.contains(key),
                     rating: (1...5).contains(item.rating ?? 0) ? item.rating! : 0))
             }
         }

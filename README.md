@@ -4,7 +4,7 @@ Track the movies, shows and games you want to watch or play, and the ones you ha
 An iPhone app with a companion website, synced through your private iCloud.
 
 - **Playlist and History.** Add anything to your Playlist; mark it played and it moves to
-  History. Favorites live in History; games on the Playlist can be marked purchased.
+  History. Favorites live in History.
 - **Returning shows.** A show in History whose next episode airs within a week moves back
   to the Playlist on its own, once per episode, and stays until you mark it played.
 - **Stream.** Which US subscription services carry what's on your Playlist, the services

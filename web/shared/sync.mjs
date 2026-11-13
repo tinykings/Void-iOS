@@ -34,7 +34,7 @@ export function fieldsFor(item) {
     source: str(item.source), mediaType: str(item.mediaType), mediaID: int(item.mediaID),
     title: str(item.title), image: str(item.image ?? ""), releaseDate: str(item.releaseDate ?? ""),
     list: str(item.list), addedAt: str(item.addedAt),
-    isFavorite: int(item.isFavorite ? 1 : 0), isPurchased: int(item.isPurchased ? 1 : 0),
+    isFavorite: int(item.isFavorite ? 1 : 0),
     rating: int(item.rating ?? 0), returnedFor: str(item.returnedFor ?? ""),
     schemaVersion: int(SCHEMA_VERSION),
   };
@@ -62,7 +62,6 @@ export function decodeRecord(record) {
     releaseDate: isCalendarDate(releaseDate) ? releaseDate : null,
     list, addedAt: new Date(addedAt).toISOString(),
     isFavorite: field(record, "isFavorite") === 1,
-    isPurchased: key.mediaType === "game" && field(record, "isPurchased") === 1,
     rating: Number.isInteger(rating) && rating >= 0 && rating <= 5 ? rating : 0,
     returnedFor: isCalendarDate(returnedFor) ? returnedFor : null,
   };

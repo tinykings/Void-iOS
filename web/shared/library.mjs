@@ -10,9 +10,9 @@
 //   checks: { [recordName]: { checkedAt, status } },   // this browser's return checks
 // }
 // item = { source, mediaType, mediaID, title, image, releaseDate, list, addedAt,
-//          isFavorite, isPurchased, rating, returnedFor }
+//          isFavorite, rating, returnedFor }
 
-export const FIELD_GROUPS = ["list", "favorite", "purchased", "rating"];
+export const FIELD_GROUPS = ["list", "favorite", "rating"];
 export const MEDIA_TYPES = ["movie", "tv", "game"];
 export const RETURN_WINDOW_DAYS = 7;
 export const RETURN_CHECK_INTERVAL = 24 * 60 * 60 * 1000;
@@ -48,7 +48,7 @@ function itemFromMedia(media, list, now) {
   return {
     source: media.source ?? defaultSource(media.mediaType), mediaType: media.mediaType, mediaID: media.id,
     title: media.title, image: media.posterPath ?? null, releaseDate: media.releaseDate ?? null,
-    list, addedAt: isoNow(now), isFavorite: false, isPurchased: false, rating: 0, returnedFor: null,
+    list, addedAt: isoNow(now), isFavorite: false, rating: 0, returnedFor: null,
   };
 }
 
@@ -77,7 +77,7 @@ function write(state, item, fields, returnFor = null) {
 }
 
 function remove(state, item, now) {
-  return write(state, { ...item, list: "none", addedAt: isoNow(now), isFavorite: false, isPurchased: false, rating: 0 }, FIELD_GROUPS);
+  return write(state, { ...item, list: "none", addedAt: isoNow(now), isFavorite: false, rating: 0 }, FIELD_GROUPS);
 }
 
 export function itemFor(state, media) {
@@ -88,14 +88,8 @@ export function itemFor(state, media) {
 export function togglePlaylist(state, media, now = Date.now()) {
   const existing = itemFor(state, media);
   if (existing?.list === "playlist") return remove(state, existing, now);
-  let next = refreshed(existing ?? itemFromMedia(media, "playlist", now), media);
-  const fields = ["list"];
-  // A game coming back from History was played, so it's owned.
-  if (media.mediaType === "game" && existing?.list === "history" && !next.isPurchased) {
-    next = { ...next, isPurchased: true };
-    fields.push("purchased");
-  }
-  return write(state, { ...next, list: "playlist", addedAt: isoNow(now) }, fields);
+  const next = refreshed(existing ?? itemFromMedia(media, "playlist", now), media);
+  return write(state, { ...next, list: "playlist", addedAt: isoNow(now) }, ["list"]);
 }
 
 // Played button: moves to History, or out of History when it's already there.
@@ -113,12 +107,6 @@ export function toggleFavorite(state, name) {
   if (item.list === "history") return write(state, { ...item, isFavorite: !item.isFavorite }, ["favorite"]);
   if (item.list === "playlist" && item.isFavorite) return write(state, { ...item, isFavorite: false }, ["favorite"]);
   return state;
-}
-
-export function togglePurchased(state, name) {
-  const item = state.items[name];
-  if (!item || item.list !== "playlist" || item.mediaType !== "game") return state;
-  return write(state, { ...item, isPurchased: !item.isPurchased }, ["purchased"]);
 }
 
 // A History show with an episode airing soon goes back to the Playlist, once per episode.
@@ -144,7 +132,6 @@ export function importItems(state, items) {
 function copyGroup(target, source, group) {
   if (group === "list") Object.assign(target, { list: source.list, addedAt: source.addedAt, returnedFor: source.returnedFor });
   if (group === "favorite") target.isFavorite = source.isFavorite;
-  if (group === "purchased") target.isPurchased = source.isPurchased;
   if (group === "rating") target.rating = source.rating;
 }
 

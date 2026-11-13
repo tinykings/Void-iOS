@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { emptyState, importItems, isInLocalDayWindow, listItems, parseRecordName, recordName, returnToPlaylist, toggleFavorite, toggleHistory, togglePlaylist, togglePurchased } from "../shared/library.mjs";
+import { emptyState, importItems, isInLocalDayWindow, listItems, parseRecordName, recordName, returnToPlaylist, toggleFavorite, toggleHistory, togglePlaylist } from "../shared/library.mjs";
 
 const show = { source: "tmdb", mediaType: "tv", id: 1399, title: "Game of Thrones", posterPath: "/got.jpg", releaseDate: "2011-04-17" };
 const game = { source: "igdb", mediaType: "game", id: 1942, title: "The Witcher 3", posterPath: "https://images.igdb.com/w3.jpg" };
@@ -24,17 +24,12 @@ test("playlist and history toggle like the webapp, removals are tombstones", () 
   s = toggleHistory(s, show, T);
   assert.equal(s.items[showName].list, "none");
   assert.equal(s.items[showName].isFavorite, false);
-  assert.deepEqual(s.sync.dirty[showName].fields.sort(), ["favorite", "list", "purchased", "rating"]);
+  assert.deepEqual(s.sync.dirty[showName].fields.sort(), ["favorite", "list", "rating"]);
 });
 
-test("favorites on the Playlist can only be cleared; games from History are purchased", () => {
-  let s = togglePlaylist(emptyState(), show, T);
+test("favorites on the Playlist can only be cleared", () => {
+  const s = togglePlaylist(emptyState(), show, T);
   assert.equal(toggleFavorite(s, showName), s);
-  s = toggleHistory(emptyState(), game, T);
-  s = togglePlaylist(s, game, T);
-  assert.equal(s.items[gameName].isPurchased, true);
-  s = togglePurchased(s, gameName);
-  assert.equal(s.items[gameName].isPurchased, false);
 });
 
 test("returns once per episode", () => {
@@ -48,7 +43,7 @@ test("returns once per episode", () => {
 });
 
 test("imports only fill gaps", () => {
-  const item = { source: "tmdb", mediaType: "tv", mediaID: 1399, title: "x", image: null, releaseDate: null, list: "history", addedAt: new Date(T).toISOString(), isFavorite: false, isPurchased: false, rating: 0, returnedFor: null };
+  const item = { source: "tmdb", mediaType: "tv", mediaID: 1399, title: "x", image: null, releaseDate: null, list: "history", addedAt: new Date(T).toISOString(), isFavorite: false, rating: 0, returnedFor: null };
   let s = importItems(emptyState(), [item]);
   assert.equal(s.sync.dirty[showName].mode, "import");
   s = togglePlaylist(s, show, T);

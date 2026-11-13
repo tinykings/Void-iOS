@@ -9,8 +9,8 @@ Container: **`iCloud.com.tinykings.Void`**. For Production, the record type belo
 must be created in Development (running a Debug build creates it) and deployed to
 Production in CloudKit Console. Production never creates record types.
 
-Console field types: every field is String except `mediaID`, `isFavorite`,
-`isPurchased`, `rating` and `schemaVersion`, which are Int(64). No indexes are required.
+Console field types: every field is String except `mediaID`, `isFavorite`, `rating`
+and `schemaVersion`, which are Int(64). No indexes are required.
 
 ## Zone
 
@@ -40,13 +40,17 @@ a higher version rather than misreading or overwriting them.
 | `list` | STRING | `playlist`, `history`, or `none` (removed: a tombstone) |
 | `addedAt` | STRING | ISO time the item entered its current list |
 | `isFavorite` | INT64 | `1` or `0` |
-| `isPurchased` | INT64 | `1` or `0` (games) |
 | `rating` | INT64 | The person's rating, 1 to 5, or `0` when none |
 | `returnedFor` | STRING | Air date (`YYYY-MM-DD`) of the episode that last moved this show from History back to the Playlist, or empty |
 | `schemaVersion` | INT64 | |
 
 Removing an item writes `list = none`; records are never deleted, so a stale client
 can't resurrect them. The Playlist is `list = playlist`, History is `list = history`.
+
+**Retired:** `isPurchased` (INT64) marked games as owned until November 2026. Clients no
+longer read or write it; older records still carry it and must be ignored. Don't reuse
+the name. The field stays in the Production schema because CloudKit can't delete
+deployed fields.
 
 ### Fields and intentions
 
@@ -55,20 +59,20 @@ offline and relaunches). Fields are grouped:
 
 - **list**: `list`, `addedAt`, `returnedFor`
 - **favorite**: `isFavorite`
-- **purchased**: `isPurchased`
 - **rating**: `rating`
+
+A pending group a client no longer knows (the retired `purchased`) is ignored when the
+saved library loads.
 
 `title`, `image` and `releaseDate` describe the item; any write carries them, and a
 remote copy's values are taken unless the item is new here.
 
 ### Rules shared with the website
 
-- Adding to the Playlist: `list = playlist`, `addedAt = now`. Coming from History, a
-  game keeps `isPurchased = 1` (it was played, so it is owned).
+- Adding to the Playlist: `list = playlist`, `addedAt = now`.
 - Marking played: `list = history`, `addedAt = now`. Marking played again (already
   in History) moves it out: `list = none`.
 - Favorite applies to History items; on the Playlist it can only be cleared.
-- Purchased applies to Playlist games only.
 - **Returning shows.** A History show whose status is not `Ended` or `Canceled`,
   checked at most once a day per device, moves back to the Playlist when TMDB's
   `next_episode_to_air.air_date` falls between today and 7 days from today (local

@@ -89,12 +89,12 @@ function card(media, item, name) {
   frame.append(poster(media.posterPath));
   const label = badge(name, item ?? {});
   if (label) frame.append(element("span", "badge", label));
-  const marks = [query && item?.list === "playlist" && "+", query && item?.list === "history" && "✓", item?.isPurchased && "$", item?.isFavorite && "♥"].filter(Boolean).join(" ");
+  const marks = [query && item?.list === "playlist" && "+", query && item?.list === "history" && "✓", item?.isFavorite && "♥"].filter(Boolean).join(" ");
   if (marks) frame.append(element("span", "marks", marks));
   button.append(frame);
   button.append(element("span", "title", media.title));
   if (query) button.append(element("span", "meta", [TYPE_NAMES[media.mediaType], media.releaseDate?.slice(0, 4)].filter(Boolean).join(" · ")));
-  button.setAttribute("aria-label", [media.title, item?.isFavorite && "favorite", item?.isPurchased && "purchased", label].filter(Boolean).join(", "));
+  button.setAttribute("aria-label", [media.title, item?.isFavorite && "favorite", label].filter(Boolean).join(", "));
   button.addEventListener("click", () => openDetails(media));
   return button;
 }
@@ -190,7 +190,6 @@ function renderDetails() {
   action(item?.list === "playlist" ? "✓ On Playlist" : "+ Playlist", item?.list === "playlist", () => site.togglePlaylist(media));
   action(item?.list === "history" ? "✓ Played" : "Mark Played", item?.list === "history", () => site.toggleHistory(media));
   if (item?.list === "history" || item?.isFavorite) action(item?.isFavorite ? "♥ Favorite" : "♡ Favorite", Boolean(item?.isFavorite), () => site.toggleFavorite(name));
-  if (media.mediaType === "game" && item?.list === "playlist") action(item?.isPurchased ? "$ Purchased" : "$ Not purchased", Boolean(item?.isPurchased), () => site.togglePurchased(name));
   body.append(actions);
 
   if (media.overview) body.append(element("p", "overview", media.overview));

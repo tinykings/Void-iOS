@@ -70,7 +70,6 @@ enum SyncCodec {
             "list": .string(item.list.rawValue),
             "addedAt": .string(item.addedAt),
             "isFavorite": .int(item.isFavorite ? 1 : 0),
-            "isPurchased": .int(item.isPurchased ? 1 : 0),
             "rating": .int(Int64(item.rating)),
             "returnedFor": .string(item.returnedFor ?? ""),
             "schemaVersion": .int(Int64(schemaVersion)),
@@ -95,7 +94,6 @@ enum SyncCodec {
         return SyncedItem(
             key: key, title: title, image: cleanImage(fields["image"]?.string), releaseDate: release,
             list: list, addedAt: iso(added), isFavorite: fields["isFavorite"]?.int == 1,
-            isPurchased: key.type == .game && fields["isPurchased"]?.int == 1,
             rating: (0...5).contains(rating) ? rating : 0, returnedFor: returned)
     }
 }

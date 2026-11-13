@@ -23,7 +23,7 @@ enum ListState: String, Codable, Sendable {
 }
 
 enum FieldGroup: String, Codable, CaseIterable, Sendable {
-    case list, favorite, purchased, rating
+    case list, favorite, rating
 }
 
 struct SyncedItem: Codable, Equatable, Sendable {
@@ -35,13 +35,12 @@ struct SyncedItem: Codable, Equatable, Sendable {
     // ISO 8601 UTC with milliseconds: when it entered its current list.
     var addedAt: String
     var isFavorite = false
-    var isPurchased = false
     var rating = 0
     // The air date of the episode that last brought this show back to the Playlist.
     var returnedFor: String?
 
     init(key: MediaKey, title: String, image: String? = nil, releaseDate: String? = nil,
-         list: ListState, addedAt: String, isFavorite: Bool = false, isPurchased: Bool = false,
+         list: ListState, addedAt: String, isFavorite: Bool = false,
          rating: Int = 0, returnedFor: String? = nil) {
         self.key = key
         self.title = title
@@ -50,7 +49,6 @@ struct SyncedItem: Codable, Equatable, Sendable {
         self.list = list
         self.addedAt = addedAt
         self.isFavorite = isFavorite
-        self.isPurchased = isPurchased
         self.rating = rating
         self.returnedFor = returnedFor
     }
@@ -67,7 +65,6 @@ struct SyncedItem: Codable, Equatable, Sendable {
             addedAt = other.addedAt
             returnedFor = other.returnedFor
         case .favorite: isFavorite = other.isFavorite
-        case .purchased: isPurchased = other.isPurchased
         case .rating: rating = other.rating
         }
     }
@@ -81,6 +78,23 @@ struct SyncLibrary: Codable, Equatable, Sendable {
         var fields: Set<FieldGroup>
         // Set while the pending list change is a return for this air date.
         var returnFor: String?
+
+        init(rev: Int, mode: Mode, fields: Set<FieldGroup>, returnFor: String? = nil) {
+            self.rev = rev
+            self.mode = mode
+            self.fields = fields
+            self.returnFor = returnFor
+        }
+
+        // Field groups saved by an older version that no longer exist (`purchased`)
+        // are dropped rather than failing to load the library.
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            rev = try c.decode(Int.self, forKey: .rev)
+            mode = try c.decode(Mode.self, forKey: .mode)
+            fields = Set(try c.decode([String].self, forKey: .fields).compactMap(FieldGroup.init(rawValue:)))
+            returnFor = try c.decodeIfPresent(String.self, forKey: .returnFor)
+        }
     }
 
     // recordName -> its latest state, tombstones included.
@@ -129,7 +143,6 @@ struct SyncLibrary: Codable, Equatable, Sendable {
         gone.list = .none
         gone.addedAt = SyncCodec.iso(now)
         gone.isFavorite = false
-        gone.isPurchased = false
         gone.rating = 0
         write(gone, Set(FieldGroup.allCases))
     }
@@ -143,15 +156,9 @@ struct SyncLibrary: Codable, Equatable, Sendable {
         }
         var next = existing ?? SyncedItem(media: media, list: .playlist, addedAt: SyncCodec.iso(now))
         next.refreshMetadata(from: media)
-        var fields: Set<FieldGroup> = [.list]
-        // A game coming back from History was played, so it's owned.
-        if media.mediaType == .game, existing?.list == .history, !next.isPurchased {
-            next.isPurchased = true
-            fields.insert(.purchased)
-        }
         next.list = .playlist
         next.addedAt = SyncCodec.iso(now)
-        write(next, fields)
+        write(next, [.list])
     }
 
     // Played button: moves to History, or out of History when it's already there.
@@ -177,12 +184,6 @@ struct SyncLibrary: Codable, Equatable, Sendable {
         default: return
         }
         write(entry, [.favorite])
-    }
-
-    mutating func togglePurchased(_ key: MediaKey) {
-        guard var entry = item(key), entry.list == .playlist, key.type == .game else { return }
-        entry.isPurchased.toggle()
-        write(entry, [.purchased])
     }
 
     // A History show with an episode airing soon goes back to the Playlist, once per

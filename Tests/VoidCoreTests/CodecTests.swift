@@ -15,7 +15,7 @@ final class CodecTests: XCTestCase {
     func testFieldsRoundTrip() {
         let item = SyncedItem(key: MediaKey(source: .igdb, type: .game, id: 5), title: "Hades", image: "https://images.igdb.com/a.jpg",
                               releaseDate: "2020-09-17", list: .playlist, addedAt: "2026-11-13T22:04:05.123Z",
-                              isFavorite: true, isPurchased: true, rating: 4, returnedFor: nil)
+                              isFavorite: true, rating: 4, returnedFor: nil)
         XCTAssertEqual(SyncCodec.decode(recordName: item.key.recordName, fields: SyncCodec.fields(item)), item)
     }
 
@@ -32,11 +32,13 @@ final class CodecTests: XCTestCase {
         fields = SyncCodec.fields(item)
         fields["image"] = .string("javascript:alert(1)")
         fields["releaseDate"] = .string("2026-02-30")
+        // Retired fields from older clients are ignored, not an error.
         fields["isPurchased"] = .int(1)
         let decoded = SyncCodec.decode(recordName: "item.tmdb.movie.5", fields: fields)
+        XCTAssertNotNil(decoded)
         XCTAssertNil(decoded?.image)
         XCTAssertNil(decoded?.releaseDate)
-        XCTAssertEqual(decoded?.isPurchased, false, "only games are purchased")
+        XCTAssertNil(SyncCodec.fields(decoded!)["isPurchased"], "isPurchased is no longer written")
     }
 
     func testISO() {
@@ -61,7 +63,6 @@ final class CodecTests: XCTestCase {
         XCTAssertEqual(items.map(\.key.recordName), ["item.tmdb.tv.1399", "item.igdb.game.9", "item.tmdb.movie.5"])
         XCTAssertEqual(items[0].list, .playlist)
         XCTAssertEqual(items[0].addedAt, "2025-01-02T03:04:05.678Z")
-        XCTAssertEqual(items[1].isPurchased, true)
         XCTAssertEqual(items[1].addedAt, "2025-01-02T00:00:00.000Z")
         XCTAssertEqual(items[2].list, .history)
         XCTAssertEqual(items[2].isFavorite, true)

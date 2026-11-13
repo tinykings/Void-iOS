@@ -38,15 +38,11 @@ final class SyncLibraryTests: XCTestCase {
         XCTAssertEqual(library.item(show.key)?.isFavorite, false)
     }
 
-    func testGameFromHistoryIsPurchased() {
-        var library = SyncLibrary()
-        library.toggleHistory(game, now: t0)
-        library.togglePlaylist(game, now: t0)
-        XCTAssertEqual(library.item(game.key)?.isPurchased, true)
-        library.togglePurchased(game.key)
-        XCTAssertEqual(library.item(game.key)?.isPurchased, false)
-        library.togglePurchased(show.key)
-        XCTAssertNil(library.item(show.key))
+    func testLoadsPendingMarksFromBeforePurchasedWasRemoved() throws {
+        // A library saved by an older build with a pending `purchased` intention.
+        let json = #"{"entries":{},"dirty":{"item.igdb.game.1":{"rev":3,"mode":"set","fields":["list","purchased"]}},"rev":3,"systemFields":{},"zoneReady":true}"#
+        let library = try JSONDecoder().decode(SyncLibrary.self, from: Data(json.utf8))
+        XCTAssertEqual(library.dirty["item.igdb.game.1"]?.fields, [.list])
     }
 
     func testPendingFieldsSurviveANewerRemoteRevision() {

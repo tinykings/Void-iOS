@@ -17,7 +17,7 @@ test("decodes the fixture iOS decodes, and writes the same fields back", () => {
   const item = decodeRecord(fixture);
   assert.deepEqual(item, {
     source: "tmdb", mediaType: "tv", mediaID: 1399, title: "Game of Thrones", image: "/u3bZgnGQ9T01sWNhyveQz0wH0Hl.jpg",
-    releaseDate: "2011-04-17", list: "history", addedAt: "2026-11-13T22:04:05.123Z", isFavorite: true, isPurchased: false,
+    releaseDate: "2011-04-17", list: "history", addedAt: "2026-11-13T22:04:05.123Z", isFavorite: true,
     rating: 5, returnedFor: "2026-11-10",
   });
   assert.deepEqual(fieldsFor(item), fixture.fields);
