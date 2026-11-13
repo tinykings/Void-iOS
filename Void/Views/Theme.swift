@@ -122,6 +122,17 @@ enum DateText {
         return date.formatted(sameYear ? .dateTime.month(.abbreviated).day() : .dateTime.month(.abbreviated).day().year())
     }
 
+    // "Today", "Tomorrow", "In 5 days"; "Yesterday" and "2 days ago" just after.
+    static func countdown(_ days: Int) -> String {
+        switch days {
+        case 0: "Today"
+        case 1: "Tomorrow"
+        case -1: "Yesterday"
+        case ..<0: "\(-days) days ago"
+        default: "In \(days) days"
+        }
+    }
+
     // Days from today to a calendar date; negative in the past.
     static func days(until value: String?) -> Int? {
         guard let value, let date = LibraryRules.localDay(String(value.prefix(10))) else { return nil }

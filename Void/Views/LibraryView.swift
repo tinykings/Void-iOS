@@ -60,17 +60,15 @@ struct PosterCard: View {
     @EnvironmentObject private var store: LibraryStore
     @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = true
 
-    // "S2E3 · Nov 20" for a show with an episode on the way, a release date for a
-    // movie or game coming out.
+    // How long until a show's next episode ("In 5 days"), or until a movie or game
+    // comes out.
     private var badge: String? {
         guard showsUpcoming else { return nil }
-        if item.key.type == .tv, let next = media.nextEpisodeToAir, let days = DateText.days(until: next.airDate), days >= -3 {
-            let episode = [next.seasonNumber.map { "S\($0)" }, next.episodeNumber.map { "E\($0)" }].compactMap { $0 }.joined()
-            let when = days == 0 ? "Today" : days == 1 ? "Tomorrow" : DateText.short(next.airDate) ?? ""
-            return [episode, when].filter { !$0.isEmpty }.joined(separator: " · ")
+        if item.key.type == .tv, let days = DateText.days(until: media.nextEpisodeToAir?.airDate), days >= -3 {
+            return DateText.countdown(days)
         }
         if item.key.type != .tv, let days = DateText.days(until: media.releaseDate), days > 0 {
-            return days == 1 ? "Tomorrow" : DateText.short(media.releaseDate)
+            return DateText.countdown(days)
         }
         return nil
     }
