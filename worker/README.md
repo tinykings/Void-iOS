@@ -2,7 +2,7 @@
 
 Cloudflare Worker proxy for TMDB (movies and shows, `/api/tmdb/...`), IGDB game search/details, HowLongToBeat completion data, and GG.deals Steam prices. It serves the iOS app, [void] on the web, and the old [void] webapp, so no client ships an API key.
 
-Moved here from the old `tinykings/void` repository. It deploys under the same name (`void-game-api`), so the old webapp keeps working.
+Moved here from the old `tinykings/void` repository. It deploys under the same name (`void-game-api`), so the old webapp keeps working. **This is the only copy: deploy it from here.** An older copy in `tinykings/void` blocks requests without an `Origin` header and has no TMDB proxy, so deploying that one breaks the iOS app with 403s.
 
 ## TMDB proxy
 
