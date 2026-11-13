@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 // A movie, show or game: details, where it streams or what it costs, cast, seasons,
 // and the library actions.
@@ -11,6 +12,7 @@ struct DetailsView: View {
     @State private var contentRating: String?
     @State private var price: GamePrice?
     @State private var failed = false
+    @State private var playing: Video?
 
     private var shown: Media { media ?? store.cachedMedia(seed.key) ?? seed }
     private var item: SyncedItem? { store.item(seed.key) }
@@ -44,9 +46,13 @@ struct DetailsView: View {
             .padding(16)
         }
         .refreshable { await load() }
+        // The title stays for the back button and history menu, but isn't drawn: the
+        // header already shows the name.
         .navigationTitle(shown.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .principal) { Text("").accessibilityHidden(true) } }
         .voidScreen()
+        .sheet(item: $playing) { TrailerPlayer(video: $0) }
         .task(id: seed.key) { await load() }
     }
 
@@ -125,10 +131,6 @@ struct DetailsView: View {
             if list == .history || item?.isFavorite == true {
                 iconButton(item?.isFavorite == true ? "heart.fill" : "heart", label: item?.isFavorite == true ? "Remove favorite" : "Favorite",
                            on: item?.isFavorite == true) { store.toggleFavorite(seed.key) }
-            }
-            if isGame && list == .playlist {
-                iconButton("dollarsign.circle", label: item?.isPurchased == true ? "Mark not purchased" : "Mark purchased",
-                           on: item?.isPurchased == true) { store.togglePurchased(seed.key) }
             }
         }
         .sensoryFeedback(.selection, trigger: item)
@@ -253,7 +255,7 @@ struct DetailsView: View {
 
     private struct ExternalLink { var label: String; var url: URL }
     private var gameLinks: [ExternalLink] {
-        let all: [(String, String?)] = [("Website", shown.website), ("HowLongToBeat", shown.hltbURL), ("IGDB", shown.sourceURL)]
+        let all: [(String, String?)] = [("HowLongToBeat", shown.hltbURL)]
         return all.compactMap { label, value in
             guard let value, let url = URL(string: value), url.scheme == "https" else { return nil }
             return ExternalLink(label: label, url: url)
@@ -268,7 +270,7 @@ struct DetailsView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 10) {
                         ForEach(Array(videos)) { video in
-                            Link(destination: video.youTubeURL!) {
+                            Button { playing = video } label: {
                                 VStack(alignment: .leading, spacing: 6) {
                                     PosterImage(path: video.youTubeThumbnailURL?.absoluteString)
                                         .frame(width: 240, height: 135)
@@ -287,7 +289,7 @@ struct DetailsView: View {
                                 .frame(width: 240, alignment: .leading)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Play \(video.name) on YouTube")
+                            .accessibilityLabel("Play \(video.name)")
                         }
                     }
                 }
@@ -356,6 +358,60 @@ struct DetailsView: View {
             }
         }
     }
+}
+
+// Plays a YouTube trailer in the app through YouTube's privacy-enhanced embed.
+struct TrailerPlayer: View {
+    let video: Video
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                YouTubeEmbed(key: video.key)
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                if let url = video.youTubeURL {
+                    Link(destination: url) { Label("Open in YouTube", systemImage: "arrow.up.right") }
+                        .font(.footnote)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .navigationTitle(video.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .voidScreen()
+        }
+        .presentationDetents([.medium, .large])
+    }
+}
+
+private struct YouTubeEmbed: UIViewRepresentable {
+    // Already checked against YouTube's ID characters by `Video.youTubeURL`.
+    let key: String
+
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
+        let view = WKWebView(frame: .zero, configuration: config)
+        view.isOpaque = false
+        view.backgroundColor = .black
+        view.scrollView.isScrollEnabled = false
+        let html = """
+        <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100%;height:100%}</style></head>
+        <body><iframe src="https://www.youtube-nocookie.com/embed/\(key)?playsinline=1&autoplay=1&rel=0"
+        allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen
+        referrerpolicy="strict-origin-when-cross-origin"></iframe></body></html>
+        """
+        // YouTube refuses embeds without a web origin to identify the page.
+        view.loadHTMLString(html, baseURL: URL(string: "https://void.tinyk.ing/"))
+        return view
+    }
+
+    func updateUIView(_ view: WKWebView, context: Context) {}
 }
 
 struct ProviderLogo: View {

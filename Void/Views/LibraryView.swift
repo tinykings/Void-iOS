@@ -104,13 +104,12 @@ struct PosterCard: View {
         .buttonStyle(.plain)
         .contextMenu { LibraryActions(media: media) }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel([media.title, item.isFavorite ? "favorite" : nil, item.isPurchased ? "purchased" : nil, badge]
+        .accessibilityLabel([media.title, item.isFavorite ? "favorite" : nil, badge]
             .compactMap { $0 }.joined(separator: ", "))
     }
 
     @ViewBuilder private var marks: some View {
         HStack(spacing: 4) {
-            if item.isPurchased { Image(systemName: "dollarsign.circle.fill") }
             if item.isFavorite { Image(systemName: "heart.fill") }
         }
         .font(.caption)
@@ -142,13 +141,6 @@ struct LibraryActions: View {
                 item?.isFavorite == true
                     ? Label("Remove Favorite", systemImage: "heart.slash")
                     : Label("Favorite", systemImage: "heart")
-            }
-        }
-        if media.mediaType == .game, item?.list == .playlist {
-            Button { store.togglePurchased(media.key) } label: {
-                item?.isPurchased == true
-                    ? Label("Mark Not Purchased", systemImage: "dollarsign.circle")
-                    : Label("Mark Purchased", systemImage: "dollarsign.circle.fill")
             }
         }
     }

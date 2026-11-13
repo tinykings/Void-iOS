@@ -88,7 +88,6 @@ final class LibraryStore: ObservableObject {
     }
 
     func toggleFavorite(_ key: MediaKey) { sync.change { $0.toggleFavorite(key) } }
-    func togglePurchased(_ key: MediaKey) { sync.change { $0.togglePurchased(key) } }
 
     // The old webapp's void-data.json. Returns how many items were added.
     func importLegacy(_ data: Data) throws -> Int {

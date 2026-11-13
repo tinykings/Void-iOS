@@ -19,7 +19,7 @@ struct DealsView: View {
     }
 
     private var games: [Game] {
-        store.entries(.playlist, type: .game).filter { !$0.isPurchased }.map { item in
+        store.entries(.playlist, type: .game).map { item in
             let media = store.media(for: item)
             return Game(media: media, appID: LibraryRules.steamAppID(media))
         }
@@ -44,9 +44,7 @@ struct DealsView: View {
     var body: some View {
         List {
             if games.isEmpty {
-                Text(store.entries(.playlist, type: .game).isEmpty
-                     ? "Add games to your Playlist to see their prices."
-                     : "Purchased games are hidden from Deals.")
+                Text("Add games to your Playlist to see their prices.")
                     .foregroundStyle(Color.voidSilver).listRowBackground(Color.voidSurface)
             }
             ForEach(deals, id: \.media.key) { deal in
@@ -71,7 +69,6 @@ struct DealsView: View {
                     if let url = URL(string: deal.price.url), url.scheme == "https" {
                         Button { openURL(url) } label: { Label("GG.deals", systemImage: "arrow.up.right") }.tint(.voidCyan)
                     }
-                    Button { store.togglePurchased(deal.media.key) } label: { Label("Purchased", systemImage: "dollarsign.circle") }
                 }
             }
             if !unpriced.isEmpty && !loading {
@@ -85,7 +82,7 @@ struct DealsView: View {
             if loading { ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear) }
             if let message { Text(message).font(.footnote).foregroundStyle(Color.voidSilver).listRowBackground(Color.clear) }
             Section {
-                Text("Prices in USD from GG.deals. Swipe a game to open its deals or mark it purchased.")
+                Text("Prices in USD from GG.deals. Swipe a game to open its deals.")
                     .font(.caption2).foregroundStyle(Color.voidSilver).listRowBackground(Color.clear)
             }
         }
