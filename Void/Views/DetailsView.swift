@@ -399,8 +399,17 @@ private struct YouTubeEmbed: UIViewRepresentable {
 enum Scramble {
     private static let glyphs = Array("ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#%&@$")
 
-    static func text(_ text: String) -> String {
-        var state: UInt64 = 0x9E3779B97F4A7C15
+    // Stand-in text, roughly a two-line summary, for episodes TMDB has no summary for.
+    private static let fillers = [
+        "The story takes a turn as old allies return and a new threat comes into view before the night is out.",
+        "Plans unravel when a secret comes to light, and an unlikely pair must decide who they can still trust.",
+        "With time running short, everyone is pushed toward a choice that will change what comes next for all of them.",
+    ]
+
+    static func filler(for id: Int) -> String { fillers[abs(id) % fillers.count] }
+
+    static func text(_ text: String, seed: Int = 0) -> String {
+        var state: UInt64 = 0x9E3779B97F4A7C15 ^ UInt64(bitPattern: Int64(seed))
         return String(text.map { character in
             guard character.isLetter || character.isNumber else { return character }
             for scalar in character.unicodeScalars { state = (state ^ UInt64(scalar.value)) &* 0x100000001B3 }
@@ -446,15 +455,18 @@ struct SeasonView: View {
                                 }
                             }
                         }
-                        if let overview = episode.overview, !overview.isEmpty {
-                            if hidden(episode) {
-                                Text(Scramble.text(overview))
-                                    .font(.system(.footnote, design: .monospaced))
-                                    .foregroundStyle(Color.voidSilver.opacity(0.7))
-                                    .lineLimit(4)
-                            } else {
-                                Text(overview).font(.footnote).foregroundStyle(Color.voidSilver).lineLimit(4)
-                            }
+                        let overview = episode.overview.flatMap { $0.isEmpty ? nil : $0 }
+                        if hidden(episode) {
+                            // No summary yet still gets a scrambled block, so every
+                            // upcoming episode looks the same until revealed.
+                            Text(Scramble.text(overview ?? Scramble.filler(for: episode.id), seed: episode.id))
+                                .font(.system(.footnote, design: .monospaced))
+                                .foregroundStyle(Color.voidSilver.opacity(0.7))
+                                .lineLimit(4)
+                        } else if let overview {
+                            Text(overview).font(.footnote).foregroundStyle(Color.voidSilver).lineLimit(4)
+                        } else if !aired(episode) {
+                            Text("No summary yet.").font(.footnote).foregroundStyle(Color.voidSilver)
                         }
                     }
                     .padding(.vertical, 4)
