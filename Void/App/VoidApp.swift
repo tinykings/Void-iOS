@@ -9,7 +9,6 @@ struct VoidApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
-                .preferredColorScheme(.dark)
                 .tint(.voidCyan)
         }
         .onChange(of: scenePhase) { _, phase in

@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var importing = false
     @State private var importResult: String?
+    @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = true
 
     var body: some View {
         NavigationStack {
@@ -23,6 +24,14 @@ struct SettingsView: View {
                     Text("Track")
                 } footer: {
                     Text("Turned-off types are hidden everywhere but stay in your library.")
+                }
+
+                Section {
+                    Toggle("Show Titles", isOn: $showTitles)
+                } header: {
+                    Text("Display")
+                } footer: {
+                    Text("Names under the posters on your Playlist and History. Search always shows them.")
                 }
 
                 Section {

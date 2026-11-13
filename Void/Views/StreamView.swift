@@ -35,7 +35,7 @@ struct StreamView: View {
                 } header: {
                     HStack(spacing: 10) {
                         ProviderLogo(provider: group.provider, size: 28)
-                        Text(group.provider.providerName).font(.headline).foregroundStyle(.white).textCase(nil)
+                        Text(group.provider.providerName).font(.headline).foregroundStyle(.primary).textCase(nil)
                         Spacer()
                         Text("\(group.items.count) of \(items.count)").font(.voidReadout).foregroundStyle(Color.voidCyan)
                     }

@@ -58,6 +58,7 @@ struct PosterCard: View {
     let media: Media
     var showsUpcoming = false
     @EnvironmentObject private var store: LibraryStore
+    @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = true
 
     // "S2E3 · Nov 20" for a show with an episode on the way, a release date for a
     // movie or game coming out.
@@ -87,15 +88,17 @@ struct PosterCard: View {
                             Text(badge.uppercased())
                                 .font(.voidLabel)
                                 .padding(.horizontal, 6).padding(.vertical, 4)
-                                .foregroundStyle(Color.voidBackground)
+                                .foregroundStyle(Color.voidOnAccent)
                                 .background(Color.voidCyan, in: RoundedRectangle(cornerRadius: 6))
                                 .padding(6)
                         }
                     }
-                Text(media.title)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(2)
-                    .foregroundStyle(.white)
+                if showTitles {
+                    Text(media.title)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(2)
+                        .foregroundStyle(.primary)
+                }
             }
         }
         .buttonStyle(.plain)

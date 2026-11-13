@@ -24,6 +24,9 @@ struct ContentView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) { footer }
+            // The floating label over the footer names the view; the title only labels
+            // the back button on pushed screens.
+            .toolbar(.hidden, for: .navigationBar)
             .voidRoutes()
             .voidScreen()
         }
@@ -83,7 +86,7 @@ struct ContentView: View {
                     .overlay(RoundedRectangle(cornerRadius: 28).fill(Color.voidBackground.opacity(0.6)))
             }
             .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color.voidBorder))
-            .shadow(color: .black.opacity(0.35), radius: 20, y: 8)
+            .shadow(color: .voidShadow, radius: 20, y: 8)
             .frame(maxWidth: 384)
         }
         .padding(.horizontal, 12)
@@ -161,8 +164,8 @@ struct ContentView: View {
             listButton(.playlist, systemImage: "bookmark", label: "Playlist")
         }
         .padding(4)
-        .background(Color.black.opacity(0.2), in: Capsule())
-        .overlay(Capsule().stroke(Color.white.opacity(0.06)))
+        .background(Color.voidWell, in: Capsule())
+        .overlay(Capsule().stroke(Color.voidBorder))
     }
 
     private func listButton(_ target: ListState, systemImage: String, label: String) -> some View {

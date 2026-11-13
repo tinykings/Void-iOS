@@ -132,7 +132,7 @@ struct DetailsView: View {
                 .font(.subheadline.weight(.bold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .foregroundStyle(on ? Color.voidBackground : .white)
+                .foregroundStyle(on ? Color.voidOnAccent : .primary)
                 .background(on ? Color.voidCyan : Color.voidSurface, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.voidBorder))
         }
@@ -144,7 +144,7 @@ struct DetailsView: View {
             Image(systemName: systemImage)
                 .font(.headline)
                 .frame(width: 46, height: 44)
-                .foregroundStyle(on ? Color.voidCyan : .white)
+                .foregroundStyle(on ? Color.voidCyan : .primary)
                 .background(Color.voidSurface, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(on ? Color.voidCyan : Color.voidBorder))
         }
