@@ -10,6 +10,8 @@ struct SearchView: View {
     @State private var loading = false
     @State private var message: String?
     @Environment(\.dismiss) private var dismiss
+    // The search field is active (keyboard up) as soon as Search opens.
+    @State private var searching = false
 
     private var trimmed: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var shown: [Media] { (trimmed.isEmpty ? trending : results).filter { store.enabledTypes.contains($0.mediaType) } }
@@ -35,7 +37,12 @@ struct SearchView: View {
                 .padding(.bottom, 24)
             }
             .navigationTitle("Search")
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Movies, shows and games")
+            .searchable(text: $query, isPresented: $searching, placement: .navigationBarDrawer(displayMode: .always), prompt: "Movies, shows and games")
+            .onAppear { searching = true }
+            // The field's ✕ with nothing typed closes Search instead of just the keyboard.
+            .onChange(of: searching) { _, active in
+                if !active && trimmed.isEmpty { dismiss() }
+            }
             .autocorrectionDisabled()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }

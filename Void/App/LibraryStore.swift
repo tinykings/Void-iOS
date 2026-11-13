@@ -27,7 +27,6 @@ final class LibraryStore: ObservableObject {
     private var forward: AnyCancellable?
     private static let enabledTypesKey = "enabledMediaTypes"
     private static let cacheURL = URL.cachesDirectory.appending(path: "metadata.json")
-    private static let staleAfter: TimeInterval = 7 * 24 * 60 * 60
 
     init() {
         let base = (Bundle.main.object(forInfoDictionaryKey: "VoidAPIBaseURL") as? String)
@@ -136,6 +135,7 @@ final class LibraryStore: ObservableObject {
         await sync.syncNow()
         await checkReturningShows()
         await fillDetails()
+        await ReleaseNotifier.reschedule(self)
     }
 
     // docs/sync-schema.md, "Returning shows". Checked once a day per show on this device.
@@ -166,7 +166,8 @@ final class LibraryStore: ObservableObject {
             .filter { $0.list != .none && $0.key.source != .steam && $0.key.source != .rawg }
             .filter { item in
                 guard let cached = cache[item.key.recordName], cached.media.status != nil || item.key.type == .game else { return true }
-                return now.timeIntervalSince(cached.fetchedAt) > Self.staleAfter
+                let maxAge = LibraryRules.detailsMaxAge(type: item.key.type, list: item.list, status: cached.media.status)
+                return now.timeIntervalSince(cached.fetchedAt) > maxAge
             }
             .sorted { $0.list == .playlist && $1.list != .playlist }
             .prefix(limit)

@@ -30,6 +30,13 @@ enum LibraryRules {
         return now.timeIntervalSince(lastChecked) > returnCheckInterval
     }
 
+    // How long cached details stay fresh. A Playlist show that's still airing refreshes
+    // daily so its next episode (and its notification) stays current; the rest weekly.
+    static func detailsMaxAge(type: MediaType, list: ListState, status: String?) -> TimeInterval {
+        let airing = type == .tv && list == .playlist && status != "Ended" && status != "Canceled"
+        return airing ? returnCheckInterval : 7 * 24 * 60 * 60
+    }
+
     // The air date a History show returns for, if its next episode airs within the window.
     static func returnAirDate(nextEpisodeAirDate: String?, now: Date, calendar: Calendar = .current) -> String? {
         guard let date = nextEpisodeAirDate,

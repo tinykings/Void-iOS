@@ -7,6 +7,9 @@ struct SettingsView: View {
     @State private var importing = false
     @State private var importResult: String?
     @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = true
+    @AppStorage(ReleaseNotifier.enabledKey) private var notify = false
+    @State private var notificationsDenied = false
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
@@ -33,6 +36,32 @@ struct SettingsView: View {
                 } footer: {
                     Text("Names under the posters on your Playlist and History. Search always shows them.")
                 }
+
+                Section {
+                    Toggle("New Episodes and Releases", isOn: $notify)
+                    if notificationsDenied {
+                        Button("Allow Notifications in Settings") {
+                            if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+                        }
+                    }
+                } header: {
+                    Text("Notifications")
+                } footer: {
+                    Text(notificationsDenied
+                         ? "Notifications for [void] are turned off in the Settings app."
+                         : "A reminder at 9 AM on the day a show on your Playlist has a new episode, or a movie or game on it comes out.")
+                }
+                .onChange(of: notify) { _, on in
+                    Task {
+                        if on, !(await ReleaseNotifier.requestPermission()) {
+                            notify = false
+                            notificationsDenied = await ReleaseNotifier.isDenied()
+                        }
+                        await ReleaseNotifier.reschedule(store)
+                    }
+                }
+                // On but blocked in the Settings app since: say so, with the way back.
+                .task { if notify { notificationsDenied = await ReleaseNotifier.isDenied() } }
 
                 Section {
                     LabeledContent("Status", value: store.sync.isActive ? "On" : "Waiting for iCloud")
