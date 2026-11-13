@@ -1,0 +1,52 @@
+# Publishes [void] on the web (web/) at https://void.tinyk.ing/ on every push to main.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "package.json"
+      - "Tests/fixtures/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test
+        run: npm test
+      - name: Build
+        run: |
+          mkdir -p _site
+          cp -R web/index.html web/privacy.html web/app.mjs web/site.mjs web/style.css web/icon.png web/shared _site/
+          echo void.tinyk.ing > _site/CNAME
+          touch _site/.nojekyll
+          find _site -type f | sort
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

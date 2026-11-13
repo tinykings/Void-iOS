@@ -1,0 +1,51 @@
+/* DESIGN.md: dark ground, cyan accent, compact. */
+:root {
+  --bg: #0F1115; --surface: #1A1D23; --fg: #F8FAFC; --cyan: #22D3EE; --silver: #94A3B8;
+  --border: rgba(255, 255, 255, 0.1);
+  --mono: ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 500 15px/1.5 system-ui, -apple-system, "Inter", sans-serif; }
+main { max-width: 1100px; margin: 0 auto; padding: 0 16px 40px; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 10px; }
+h1 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: -0.02em; }
+h2 { margin: 0 0 6px; font-size: 20px; line-height: 1.2; }
+a { color: var(--cyan); }
+button { font: inherit; font-weight: 700; color: var(--bg); background: var(--cyan); border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+button.secondary { background: var(--surface); color: var(--fg); border: 1px solid var(--border); }
+button:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.label { font: 700 11px/1.2 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--silver); }
+.hint { color: var(--silver); font-size: 13px; }
+.problem { background: var(--surface); border: 1px solid var(--cyan); border-radius: 8px; padding: 10px 12px; }
+.intro { max-width: 560px; padding: 40px 0; }
+.intro p { color: var(--silver); }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 10px; }
+.tabs button { background: var(--surface); color: var(--silver); border: 1px solid var(--border); }
+.tabs button[aria-pressed="true"] { background: var(--cyan); color: var(--bg); }
+#search-form { flex: 1 1 240px; }
+#search { width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font: inherit; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chip { font: 700 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 10px; border-radius: 999px; background: var(--surface); color: var(--silver); border: 1px solid var(--border); }
+.chip[aria-pressed="true"] { background: var(--cyan); color: var(--bg); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 16px 12px; }
+.card { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 0; background: none; color: var(--fg); text-align: left; font-weight: 600; }
+.poster { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); display: block; }
+.poster.empty { min-height: 0; }
+.card .title { font-size: 13px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card .meta { font: 700 10px/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--silver); }
+.frame { position: relative; display: block; }
+.badge { position: absolute; left: 6px; bottom: 6px; font: 700 10px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; padding: 5px 6px; border-radius: 6px; background: var(--cyan); color: var(--bg); }
+.marks { position: absolute; right: 6px; top: 6px; color: var(--cyan); font-weight: 900; text-shadow: 0 1px 3px #000; }
+dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); background: var(--surface); color: var(--fg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
+.close { position: absolute; right: 12px; top: 12px; background: transparent; color: var(--silver); padding: 6px 10px; }
+.details-head { display: grid; grid-template-columns: 110px 1fr; gap: 14px; padding-right: 30px; }
+.details-head p { margin: 4px 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.actions button.on { background: var(--cyan); color: var(--bg); }
+.overview { margin: 0 0 12px; }
+footer { margin-top: 32px; border-top: 1px solid var(--border); padding-top: 10px; }
+.noscript { padding: 20px; }
+@media (prefers-reduced-motion: no-preference) { .card .poster { transition: transform 0.15s ease-out; } .card:hover .poster { transform: translateY(-2px); } }
