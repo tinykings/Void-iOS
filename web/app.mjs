@@ -70,16 +70,18 @@ let results = [];
 
 const mediaOf = item => ({ source: item.source, mediaType: item.mediaType, id: item.mediaID, title: item.title, posterPath: item.image, releaseDate: item.releaseDate });
 
+// "Today", "Tomorrow", "In 5 days"; "Yesterday" and "2 days ago" just after. As on iOS.
+const countdown = days => days === 0 ? "Today" : days === 1 ? "Tomorrow" : days === -1 ? "Yesterday" : days < 0 ? `${-days} days ago` : `In ${days} days`;
+
+// Only within the 30 days that also move a title to the top of the Playlist.
 function badge(name, item) {
   if (tab !== "playlist" || query) return null;
   if (item.mediaType === "tv") {
-    const next = details[name]?.nextAirDate;
-    const days = daysUntil(next);
-    if (days != null && days >= -3) return days === 0 ? "Today" : days === 1 ? "Tomorrow" : shortDate(next);
-    return null;
+    const days = daysUntil(details[name]?.nextAirDate);
+    return days != null && days >= -3 && days <= 30 ? countdown(days) : null;
   }
   const days = daysUntil(item.releaseDate);
-  return days != null && days > 0 ? (days === 1 ? "Tomorrow" : shortDate(item.releaseDate)) : null;
+  return days != null && days > 0 && days <= 30 ? countdown(days) : null;
 }
 
 function card(media, item, name) {

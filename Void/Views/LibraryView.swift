@@ -61,13 +61,14 @@ struct PosterCard: View {
     @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = true
 
     // How long until a show's next episode ("In 5 days"), or until a movie or game
-    // comes out.
+    // comes out; only within the 30 days that also move it to the top of the Playlist.
     private var badge: String? {
         guard showsUpcoming else { return nil }
-        if item.key.type == .tv, let days = DateText.days(until: media.nextEpisodeToAir?.airDate), days >= -3 {
+        let window = LibraryRules.releasePriorityWindowDays
+        if item.key.type == .tv, let days = DateText.days(until: media.nextEpisodeToAir?.airDate), (-3...window).contains(days) {
             return DateText.countdown(days)
         }
-        if item.key.type != .tv, let days = DateText.days(until: media.releaseDate), days > 0 {
+        if item.key.type != .tv, let days = DateText.days(until: media.releaseDate), (1...window).contains(days) {
             return DateText.countdown(days)
         }
         return nil

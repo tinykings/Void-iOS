@@ -64,8 +64,9 @@ enum LibraryRules {
         return calendar
     }()
 
-    // The Playlist: upcoming shows (an episode on the way) and movies or games releasing
-    // within 30 days come first, soonest first; then the rest, newest added first.
+    // The Playlist: shows with an episode within 30 days (or aired in the last 3) and
+    // movies or games releasing within 30 days come first, soonest first; then the
+    // rest, newest added first.
     static func sortPlaylist<T>(_ items: [T], now: Date = Date(), input: (T) -> SortInput) -> [T] {
         let today = Calendar.current.startOfDay(for: now)
         func days(_ date: Date) -> Int {
@@ -78,7 +79,8 @@ enum LibraryRules {
             let sortInput = input(item)
             if let date = relevantDate(sortInput) {
                 let diff = days(date)
-                let isUpcomingShow = sortInput.type == .tv && sortInput.nextEpisodeAirDate != nil && diff >= -3
+                let isUpcomingShow = sortInput.type == .tv && sortInput.nextEpisodeAirDate != nil
+                    && diff >= -3 && diff <= releasePriorityWindowDays
                 let isRelease = sortInput.type != .tv && abs(diff) <= releasePriorityWindowDays
                 if isUpcomingShow || isRelease {
                     upcoming.append((item, date))

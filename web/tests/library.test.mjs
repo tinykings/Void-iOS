@@ -66,3 +66,14 @@ test("local day window and playlist order", () => {
   assert.deepEqual(order, ["Soon", "Game of Thrones", "Newer add", "Old"]);
   assert.deepEqual(listItems(s, "playlist", { now, type: "game" }).map(e => e.item.title), ["Soon"]);
 });
+
+test("the Playlist puts shows airing within 30 days first, not ones far off", () => {
+  const far = { source: "tmdb", mediaType: "tv", id: 1, title: "Far", posterPath: null };
+  const soon = { source: "tmdb", mediaType: "tv", id: 2, title: "Soon", posterPath: null };
+  let s = togglePlaylist(emptyState(), soon, T);
+  s = togglePlaylist(s, far, T + 1000);
+  const day = offset => new Date(T + offset * 86400000).toISOString().slice(0, 10);
+  const nextAirDate = { "item.tmdb.tv.1": day(238), "item.tmdb.tv.2": day(5) };
+  const names = listItems(s, "playlist", { details: name => ({ nextAirDate: nextAirDate[name] }), now: T }).map(entry => entry.name);
+  assert.deepEqual(names, ["item.tmdb.tv.2", "item.tmdb.tv.1"]);
+});

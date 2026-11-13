@@ -182,8 +182,9 @@ export function needsReturnCheck(check, now) {
   return !check?.checkedAt || now - check.checkedAt > RETURN_CHECK_INTERVAL;
 }
 
-// Shown items of a list, filtered by type, sorted as on iOS: the Playlist puts upcoming
-// shows and releases within 30 days first (soonest first), then newest added; History
+// Shown items of a list, filtered by type, sorted as on iOS: the Playlist puts shows with
+// an episode within 30 days (or aired in the last 3) and releases within 30 days first
+// (soonest first), then newest added; History
 // is newest first. `details(name)` gives cached { nextAirDate } when known.
 export function listItems(state, list, { type = null, favoritesOnly = false, enabled = MEDIA_TYPES, details = () => null, now = Date.now() } = {}) {
   const items = Object.entries(state.items)
@@ -200,7 +201,7 @@ export function listItems(state, list, { type = null, favoritesOnly = false, ena
     const date = match ? Date.UTC(+match[1], +match[2] - 1, +match[3]) : null;
     if (date !== null) {
       const diff = Math.ceil((date - today.getTime()) / 86400000);
-      if ((entry.item.mediaType === "tv" && next && diff >= -3) || (entry.item.mediaType !== "tv" && Math.abs(diff) <= 30)) {
+      if ((entry.item.mediaType === "tv" && next && diff >= -3 && diff <= 30) || (entry.item.mediaType !== "tv" && Math.abs(diff) <= 30)) {
         upcoming.push({ ...entry, date });
         continue;
       }

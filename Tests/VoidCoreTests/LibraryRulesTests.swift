@@ -44,9 +44,10 @@ final class LibraryRulesTests: XCTestCase {
             ("show soon", .init(type: .tv, releaseDate: "2011-01-01", nextEpisodeAirDate: day(5), addedAt: "2020-01-01T00:00:00.000Z")),
             ("game soon", .init(type: .game, releaseDate: day(2), addedAt: "2020-01-01T00:00:00.000Z")),
             ("ended show", .init(type: .tv, releaseDate: day(1), addedAt: "2019-01-01T00:00:00.000Z")),
+            ("show far off", .init(type: .tv, releaseDate: "2013-01-01", nextEpisodeAirDate: day(238), addedAt: "2018-01-01T00:00:00.000Z")),
         ]
         let sorted = LibraryRules.sortPlaylist(items) { $0.1 }.map(\.0)
-        XCTAssertEqual(sorted, ["game soon", "show soon", "new add", "old movie", "ended show"])
+        XCTAssertEqual(sorted, ["game soon", "show soon", "new add", "old movie", "ended show", "show far off"])
     }
 
     func testSearchRanking() {
