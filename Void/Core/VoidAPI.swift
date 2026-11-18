@@ -71,6 +71,25 @@ struct VoidAPI: Sendable {
         return page.results.compactMap(\.value).filter { $0.mediaType != .game }
     }
 
+    // Movies or shows first released in the next `days` days, most popular first.
+    func upcoming(_ type: MediaType, days: Int = LibraryRules.upcomingDays, now: Date = Date(),
+                  calendar: Calendar = .current) async throws -> [Media] {
+        precondition(type != .game)
+        let today = calendar.startOfDay(for: now)
+        guard let from = calendar.date(byAdding: .day, value: 1, to: today),
+              let to = calendar.date(byAdding: .day, value: days, to: today) else { return [] }
+        let field = type == .movie ? "primary_release_date" : "first_air_date"
+        let page = try await get("api/tmdb/discover/\(type.rawValue)",
+                                 ["\(field).gte": Self.day(from, calendar), "\(field).lte": Self.day(to, calendar), "sort_by": "popularity.desc"],
+                                 as: Page<Media>.self, mediaType: type)
+        return page.results.compactMap(\.value)
+    }
+
+    static func day(_ date: Date, _ calendar: Calendar) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
     func details(_ type: MediaType, id: Int) async throws -> Media {
         precondition(type != .game)
         return try await get("api/tmdb/\(type.rawValue)/\(id)",
@@ -127,6 +146,16 @@ struct VoidAPI: Sendable {
 
     func searchGames(_ query: String) async throws -> [Media] {
         try await get("api/games/search", ["q": query], as: [Failable<Media>].self, mediaType: .game).compactMap(\.value)
+    }
+
+    // The Worker's blend of IGDB popularity signals.
+    func trendingGames() async throws -> [Media] {
+        try await get("api/games/trending", as: [Failable<Media>].self, mediaType: .game).compactMap(\.value)
+    }
+
+    // The most anticipated games out in the next 30 days.
+    func upcomingGames() async throws -> [Media] {
+        try await get("api/games/upcoming", as: [Failable<Media>].self, mediaType: .game).compactMap(\.value)
     }
 
     func game(_ id: Int) async throws -> Media {

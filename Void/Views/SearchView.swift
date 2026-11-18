@@ -1,7 +1,8 @@
 import SwiftUI
 
-// Movies and shows from TMDB and games from IGDB, ranked together; this week's
-// trending titles before you type.
+// Movies and shows from TMDB and games from IGDB, ranked together. Before you type,
+// this week's trending movies, shows and games, with popular ones coming in the next
+// month mixed in (LibraryRules.mixTrending), as on the website's Trending tab.
 struct SearchView: View {
     @EnvironmentObject private var store: LibraryStore
     @State private var query = ""
@@ -22,13 +23,16 @@ struct SearchView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if trimmed.isEmpty && !shown.isEmpty {
                         Text("TRENDING THIS WEEK").font(.voidLabel).tracking(1.3).foregroundStyle(Color.voidSilver)
+                        if shown.contains(where: { daysUntilRelease($0) != nil }) {
+                            Text("Amber posters aren't out yet.").font(.caption).foregroundStyle(Color.voidSilver)
+                        }
                     }
                     if let message {
                         Text(message).font(.subheadline).foregroundStyle(Color.voidSilver)
                     }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10, alignment: .top)], spacing: 14) {
                         ForEach(shown, id: \.key) { media in
-                            SearchResultCard(media: media)
+                            SearchResultCard(media: media, daysUntilRelease: daysUntilRelease(media))
                         }
                     }
                     if loading { ProgressView().frame(maxWidth: .infinity).padding() }
@@ -54,10 +58,30 @@ struct SearchView: View {
         }
     }
 
+    // Days until a trending title comes out, if it isn't out yet. Not for search results.
+    private func daysUntilRelease(_ media: Media) -> Int? {
+        guard trimmed.isEmpty, let days = DateText.days(until: media.releaseDate), days > 0 else { return nil }
+        return days
+    }
+
+    // Each source on its own: whichever load, show.
     @MainActor private func loadTrending() async {
-        guard trending.isEmpty, store.enabledTypes.contains(.movie) || store.enabledTypes.contains(.tv) else { return }
+        let types = store.enabledTypes
+        guard trending.isEmpty, !types.isEmpty else { return }
         let api = store.api
-        trending = (try? await api.trending()) ?? []
+        let video = types.contains(.movie) || types.contains(.tv)
+        async let titles = Self.load(video) { try await api.trending() }
+        async let games = Self.load(types.contains(.game)) { try await api.trendingGames() }
+        async let movies = Self.load(types.contains(.movie)) { try await api.upcoming(.movie) }
+        async let shows = Self.load(types.contains(.tv)) { try await api.upcoming(.tv) }
+        async let upcomingGames = Self.load(types.contains(.game)) { try await api.upcomingGames() }
+        trending = LibraryRules.mixTrending(titles: await titles, games: await games, upcomingMovies: await movies,
+                                            upcomingShows: await shows, upcomingGames: await upcomingGames)
+    }
+
+    private static func load(_ wanted: Bool, _ body: @Sendable () async throws -> [Media]) async -> [Media] {
+        guard wanted else { return [] }
+        return (try? await body()) ?? []
     }
 
     @MainActor private func search(_ text: String) async {
@@ -95,6 +119,8 @@ struct SearchView: View {
 
 struct SearchResultCard: View {
     let media: Media
+    // Set for trending titles not out yet: an amber border and a countdown.
+    var daysUntilRelease: Int? = nil
     @EnvironmentObject private var store: LibraryStore
 
     var body: some View {
@@ -104,7 +130,11 @@ struct SearchResultCard: View {
                 PosterImage(path: media.posterPath)
                     .aspectRatio(2 / 3, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(list == .playlist ? Color.voidCyan : list == .history ? Color.voidHistory : Color.voidBorder))
+                    // The Playlist and History colors win; the countdown still shows below.
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(
+                        list == .playlist ? Color.voidCyan : list == .history ? Color.voidHistory
+                            : daysUntilRelease != nil ? Color.voidAmber : Color.voidBorder,
+                        lineWidth: list == nil && daysUntilRelease != nil ? 2 : 1))
                     .overlay(alignment: .topTrailing) {
                         if list == .playlist {
                             Image(systemName: "plus.circle.fill")
@@ -120,8 +150,9 @@ struct SearchResultCard: View {
                         }
                     }
                 Text(media.title).font(.caption.weight(.semibold)).lineLimit(2)
-                Text([media.mediaType.singular, media.year].compactMap { $0 }.joined(separator: " · ").uppercased())
-                    .font(.voidLabel).foregroundStyle(Color.voidSilver)
+                Text([media.mediaType.singular, daysUntilRelease.map(DateText.countdown) ?? media.year]
+                        .compactMap { $0 }.joined(separator: " · ").uppercased())
+                    .font(.voidLabel).foregroundStyle(daysUntilRelease != nil ? Color.voidAmber : Color.voidSilver)
             }
         }
         .buttonStyle(.plain)

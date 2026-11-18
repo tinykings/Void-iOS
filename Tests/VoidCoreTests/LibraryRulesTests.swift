@@ -96,4 +96,26 @@ final class LibraryRulesTests: XCTestCase {
         media.steamAppId = 400
         XCTAssertEqual(LibraryRules.steamAppID(media), 400)
     }
+
+    func testMixTrending() {
+        func movie(_ id: Int) -> Media { Media(id: id, mediaType: .movie, title: "Movie \(id)") }
+        func show(_ id: Int) -> Media { Media(id: id, mediaType: .tv, title: "Show \(id)") }
+        func game(_ id: Int) -> Media { Media(id: id, mediaType: .game, title: "Game \(id)") }
+        let label = { (list: [Media]) in list.map { "\($0.mediaType.rawValue)\($0.id)" } }
+
+        // Two titles then a game, then the rest of the titles.
+        XCTAssertEqual(label(LibraryRules.mixTrending(titles: [movie(1), show(2), movie(3), show(4)], games: [game(5)])),
+                       ["movie1", "tv2", "game5", "movie3", "tv4"])
+        // Games only when there are no titles.
+        XCTAssertEqual(label(LibraryRules.mixTrending(titles: [], games: [game(1), game(2)])), ["game1", "game2"])
+
+        // An upcoming title after every fourth trending one, rotating movie, show, game;
+        // trending ones (movie 1) aren't repeated, and leftovers go at the end.
+        let mixed = LibraryRules.mixTrending(
+            titles: [movie(1), show(2), movie(3), show(4), movie(5), show(6)], games: [game(7), game(8)],
+            upcomingMovies: [movie(1), movie(10)], upcomingShows: [show(20)], upcomingGames: [game(30), game(31)])
+        XCTAssertEqual(label(mixed), ["movie1", "tv2", "game7", "movie3", "movie10",
+                                      "tv4", "game8", "movie5", "tv6", "tv20",
+                                      "game30", "game31"])
+    }
 }

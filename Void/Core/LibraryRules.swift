@@ -140,6 +140,43 @@ enum LibraryRules {
             .map(\.media)
     }
 
+    // MARK: Trending
+
+    static let upcomingEach = 6
+    static let upcomingDays = 30
+
+    // As the website's Trending tab: one game after every two movies or shows, then
+    // whatever's left of either. Upcoming titles (up to six each, rotating movie, show,
+    // game) go in after every fourth of those, and any already trending are left out.
+    static func mixTrending(titles: [Media], games: [Media], upcomingMovies: [Media] = [],
+                            upcomingShows: [Media] = [], upcomingGames: [Media] = []) -> [Media] {
+        var trending: [Media] = []
+        var t = 0, g = 0
+        while t < titles.count || g < games.count {
+            for _ in 0..<2 where t < titles.count { trending.append(titles[t]); t += 1 }
+            if g < games.count { trending.append(games[g]); g += 1 }
+        }
+
+        var seen = Set(trending.map(\.key))
+        let lists = [upcomingMovies, upcomingShows, upcomingGames].map { list in
+            Array(list.filter { !seen.contains($0.key) }.prefix(upcomingEach))
+        }
+        var upcoming: [Media] = []
+        for index in 0..<upcomingEach {
+            for list in lists where index < list.count && seen.insert(list[index].key).inserted {
+                upcoming.append(list[index])
+            }
+        }
+
+        var mixed: [Media] = []
+        var u = 0
+        for (index, media) in trending.enumerated() {
+            mixed.append(media)
+            if index % 4 == 3 && u < upcoming.count { mixed.append(upcoming[u]); u += 1 }
+        }
+        return mixed + upcoming[u...]
+    }
+
     // MARK: Streaming providers
 
     private static func clean(_ name: String) -> String {
