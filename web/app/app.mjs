@@ -71,6 +71,12 @@ let typeFilter = null;
 let favoritesOnly = false;
 let query = "";
 let results = [];
+// Popular: TMDB's trending movies and shows this week, as on the iOS Search screen.
+let popular = null;       // null until loaded
+let popularError = null;
+let loadingPopular = false;
+// Search results and Popular show titles that may not be in the library.
+const browsing = () => Boolean(query) || tab === "popular";
 
 const mediaOf = item => ({ source: item.source, mediaType: item.mediaType, id: item.mediaID, title: item.title, posterPath: item.image, releaseDate: item.releaseDate });
 
@@ -95,11 +101,11 @@ function card(media, item, name) {
   frame.append(poster(media.posterPath));
   const label = badge(name, item ?? {});
   if (label) frame.append(element("span", "badge", label));
-  const marks = [query && item?.list === "playlist" && "+", query && item?.list === "history" && "✓", item?.isFavorite && "♥"].filter(Boolean).join(" ");
+  const marks = [browsing() && item?.list === "playlist" && "+", browsing() && item?.list === "history" && "✓", item?.isFavorite && "♥"].filter(Boolean).join(" ");
   if (marks) frame.append(element("span", "marks", marks));
   button.append(frame);
   button.append(element("span", "title", media.title));
-  if (query) button.append(element("span", "meta", [TYPE_NAMES[media.mediaType], media.releaseDate?.slice(0, 4)].filter(Boolean).join(" · ")));
+  if (browsing()) button.append(element("span", "meta", [TYPE_NAMES[media.mediaType], media.releaseDate?.slice(0, 4)].filter(Boolean).join(" · ")));
   button.setAttribute("aria-label", [media.title, item?.isFavorite && "favorite", label].filter(Boolean).join(", "));
   button.addEventListener("click", () => openDetails(media));
   return button;
@@ -150,6 +156,11 @@ function render() {
     const shown = results.filter(media => !typeFilter || media.mediaType === typeFilter);
     cards = shown.map(media => card(media, state ? itemFor(state, media) : null, null));
     $("#status").textContent = searching ? "Searching…" : shown.length ? `${shown.length} results` : `Nothing found for “${query}”.`;
+  } else if (tab === "popular") {
+    const shown = (popular ?? []).filter(media => !typeFilter || media.mediaType === typeFilter);
+    cards = shown.map(media => card(media, state ? itemFor(state, media) : null, null));
+    $("#status").textContent = popular === null ? (popularError ?? "Loading popular movies and shows…")
+      : shown.length ? `Popular this week: ${shown.length}` : typeFilter === "game" ? "Popular is movies and shows only." : "Nothing popular to show.";
   } else {
     const entries = state ? listItems(state, tab, { type: typeFilter, favoritesOnly: tab === "history" && favoritesOnly, details: name => details[name] }) : [];
     cards = entries.map(({ name, item }) => card(mediaOf(item), item, name));
@@ -397,7 +408,22 @@ for (const button of document.querySelectorAll("[data-tab]")) {
     favoritesOnly = false;
     query = ""; $("#search").value = ""; results = [];
     render();
+    if (tab === "popular") loadPopular();
   });
+}
+
+async function loadPopular() {
+  if (popular !== null || loadingPopular) return;
+  loadingPopular = true;
+  popularError = null;
+  try {
+    popular = await site.api.trending();
+  } catch (error) {
+    popularError = `Couldn't load popular titles. ${error?.message ?? ""} Press Popular to try again.`.trim();
+  } finally {
+    loadingPopular = false;
+    render();
+  }
 }
 
 // --- Import (TEMPORARY; see legacy-import.mjs)
