@@ -210,13 +210,18 @@ function renderDetails() {
   }
 }
 
-// Trailers, cast and seasons sit below, in #details-extra. renderDetails rebuilds the top
+// Trailers, seasons and cast sit below, in #details-extra. renderDetails rebuilds the top
 // on every sync, so they're built once per opening and a playing trailer keeps playing.
+// Each has its own slot, in this order, since cast can load before or after the rest.
 const extra = $("#details-extra");
+const SLOTS = ["Trailers", "Seasons", "Cast"];
+function resetExtra() {
+  extra.replaceChildren(...SLOTS.map(() => element("div")));
+}
 function section(title) {
   const node = element("section", "extra");
   node.append(element("h3", "label", title));
-  extra.append(node);
+  extra.children[SLOTS.indexOf(title)].replaceChildren(node);
   return node;
 }
 
@@ -262,17 +267,12 @@ function renderCast(cast) {
     if (person.character) tile.append(element("span", "hint", person.character));
     row.append(tile);
   }
-  // Cast arrives after the trailers, so it's kept after them.
-  const node = section("Cast");
-  node.append(row);
-  const seasons = extra.querySelector(".seasons");
-  if (seasons) extra.insertBefore(node, seasons);
+  section("Cast").append(row);
 }
 
 function renderSeasons(showID, seasons) {
   if (!seasons?.length) return;
   const node = section("Seasons");
-  node.classList.add("seasons");
   for (const season of seasons) {
     const box = element("details", "season");
     const summary = element("summary");
@@ -325,7 +325,7 @@ function episodeRow(episode) {
 async function openDetails(media) {
   openMedia = media;
   openExtra = null;
-  extra.replaceChildren();
+  resetExtra();
   renderDetails();
   if (!dialog.open) dialog.showModal();
   const opened = media;
