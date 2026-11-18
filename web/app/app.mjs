@@ -181,6 +181,7 @@ function renderDetails() {
   text.append(element("h2", null, media.title));
   text.append(element("p", "label", [TYPE_NAMES[media.mediaType], media.releaseDate?.slice(0, 4), media.mediaType === "tv" && media.status].filter(Boolean).join(" · ")));
   if (media.genres?.length) text.append(element("p", "hint", media.genres.slice(0, 3).join(", ")));
+  if (media.overview) text.append(element("p", "overview", media.overview));
   if (media.nextAirDate) text.append(element("p", "hint", `Next episode ${shortDate(media.nextAirDate)}`));
   head.append(text);
   body.append(head);
@@ -198,7 +199,6 @@ function renderDetails() {
   if (item?.list === "history" || item?.isFavorite) action(item?.isFavorite ? "♥ Favorite" : "♡ Favorite", Boolean(item?.isFavorite), () => site.toggleFavorite(name));
   body.append(actions);
 
-  if (media.overview) body.append(element("p", "overview", media.overview));
   if (media.mediaType !== "game") {
     const providers = openExtra?.providers;
     const line = element("p", "hint");

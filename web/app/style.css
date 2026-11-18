@@ -46,7 +46,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
 .details-head p { margin: 4px 0; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
 .actions button.on { background: var(--cyan); color: var(--bg); }
-.overview { margin: 0 0 12px; }
+.details-head .overview { margin-top: 10px; }
 .extra { margin-top: 18px; }
 .extra h3 { margin: 0 0 8px; }
 .row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
