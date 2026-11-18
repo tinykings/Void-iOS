@@ -15,7 +15,7 @@ import { RECORD_TYPE } from "../shared/sync.mjs";
 export const SITE_CLOUDKIT = Object.freeze({
   container: VOID_CONTAINER,
   environment: "production",
-  apiToken: "SET_ME_CLOUDKIT_WEB_API_TOKEN",
+  apiToken: "1b5f4263a2afc561e356d554122cede72a448790d5336aec5c262e7297d3e3c3",
 });
 
 export const TOKEN_KEY = "voidCloudKitToken";
