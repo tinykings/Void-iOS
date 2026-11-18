@@ -48,6 +48,12 @@ test('tmdbProxyPath forwards only known endpoints and parameters', async () => {
   assert.deepEqual(tmdbProxyPath('/api/tmdb/tv/1', params('append_to_response=account_states')), { error: 'Unsupported append_to_response' });
   assert.deepEqual(tmdbProxyPath('/api/tmdb/search/multi', params('query=%20')), { error: 'Search query is required' });
   assert.deepEqual(tmdbProxyPath('/api/tmdb/tv/1/../../account', params('')), { error: 'Unsupported TMDB endpoint' });
+  assert.equal(tmdbProxyPath('/api/tmdb/discover/tv', params('first_air_date.gte=2026-11-18&first_air_date.lte=2026-12-18&sort_by=popularity.desc')),
+    'https://api.themoviedb.org/3/discover/tv?first_air_date.gte=2026-11-18&first_air_date.lte=2026-12-18&sort_by=popularity.desc');
+  assert.equal(typeof tmdbProxyPath('/api/tmdb/discover/movie', params('primary_release_date.gte=2026-11-18&primary_release_date.lte=2026-12-18')), 'string');
+  assert.deepEqual(tmdbProxyPath('/api/tmdb/discover/movie', params('sort_by=revenue.desc')), { error: 'Unsupported sort' });
+  assert.deepEqual(tmdbProxyPath('/api/tmdb/discover/tv', params('first_air_date.gte=soon')), { error: 'Invalid date' });
+  assert.deepEqual(tmdbProxyPath('/api/tmdb/discover/tv', params('with_genres=18')), { error: 'Unsupported query parameter' });
 });
 
 test('blendTrending rewards games that rank well across several signals', async () => {

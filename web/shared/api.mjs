@@ -34,6 +34,24 @@ export function createApi({ fetcher = (...args) => globalThis.fetch(...args), ba
       const data = await get("/api/tmdb/trending/all/week");
       return (data.results ?? []).map(raw => fromTMDB(raw)).filter(Boolean);
     },
+    // Movies and shows coming out in the next `days` days, most popular first.
+    async upcoming(days = 30, today = new Date()) {
+      const day = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      const from = new Date(today); from.setDate(from.getDate() + 1);
+      const to = new Date(today); to.setDate(to.getDate() + days);
+      const [movies, shows] = await Promise.all([
+        get("/api/tmdb/discover/movie", { "primary_release_date.gte": day(from), "primary_release_date.lte": day(to), sort_by: "popularity.desc" }),
+        get("/api/tmdb/discover/tv", { "first_air_date.gte": day(from), "first_air_date.lte": day(to), sort_by: "popularity.desc" }),
+      ]);
+      return {
+        movies: (movies.results ?? []).map(raw => fromTMDB(raw, "movie")).filter(Boolean),
+        shows: (shows.results ?? []).map(raw => fromTMDB(raw, "tv")).filter(Boolean),
+      };
+    },
+    async upcomingGames() {
+      const data = await get("/api/games/upcoming");
+      return (Array.isArray(data) ? data : []).map(fromGame).filter(Boolean);
+    },
     async trendingGames() {
       const data = await get("/api/games/trending");
       return (Array.isArray(data) ? data : []).map(fromGame).filter(Boolean);

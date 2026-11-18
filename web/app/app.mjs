@@ -99,15 +99,18 @@ function card(media, item, name) {
   const button = element("button", "card");
   button.type = "button";
   const frame = element("span", "frame");
+  const days = tab === "trending" && !query ? daysUntil(media.releaseDate) : null;
+  const upcoming = days !== null && days > 0;
   frame.append(poster(media.posterPath));
+  if (upcoming) button.classList.add("upcoming");
   const label = badge(name, item ?? {});
   if (label) frame.append(element("span", "badge", label));
   const marks = [browsing() && item?.list === "playlist" && "+", browsing() && item?.list === "history" && "✓", item?.isFavorite && "♥"].filter(Boolean).join(" ");
   if (marks) frame.append(element("span", "marks", marks));
   button.append(frame);
   button.append(element("span", "title", media.title));
-  if (browsing()) button.append(element("span", "meta", [TYPE_NAMES[media.mediaType], media.releaseDate?.slice(0, 4)].filter(Boolean).join(" · ")));
-  button.setAttribute("aria-label", [media.title, item?.isFavorite && "favorite", label].filter(Boolean).join(", "));
+  if (browsing()) button.append(element("span", "meta", [TYPE_NAMES[media.mediaType], upcoming ? countdown(days) : media.releaseDate?.slice(0, 4)].filter(Boolean).join(" · ")));
+  button.setAttribute("aria-label", [media.title, upcoming && `coming ${countdown(days).toLowerCase()}`, item?.isFavorite && "favorite", label].filter(Boolean).join(", "));
   button.addEventListener("click", () => openDetails(media));
   return button;
 }
@@ -161,7 +164,7 @@ function render() {
     const shown = (trending ?? []).filter(media => !typeFilter || media.mediaType === typeFilter);
     cards = shown.map(media => card(media, state ? itemFor(state, media) : null, null));
     $("#status").textContent = trending === null ? (trendingError ?? "Loading what's trending…")
-      : shown.length ? `Trending this week: ${shown.length}${trendingError ? `. ${trendingError}` : ""}`
+      : shown.length ? [`Trending this week: ${shown.length}.`, shown.some(media => daysUntil(media.releaseDate) > 0) && "Amber posters aren't out yet.", trendingError].filter(Boolean).join(" ")
       : trendingError ?? "Nothing trending to show.";
   } else {
     const entries = state ? listItems(state, tab, { type: typeFilter, favoritesOnly: tab === "history" && favoritesOnly, details: name => details[name] }) : [];
@@ -425,17 +428,42 @@ function interleave(titles, games) {
   return mixed;
 }
 
+const UPCOMING_EACH = 6;
+const mediaKey = media => `${media.source}.${media.mediaType}.${media.id}`;
+
+// Upcoming titles go in after every fourth trending one, alternating movie, show and
+// game; anything already trending is left out.
+function mixUpcoming(trendingTitles, { movies = [], shows = [], games = [] }) {
+  const seen = new Set(trendingTitles.map(mediaKey));
+  const pick = list => list.filter(media => !seen.has(mediaKey(media))).slice(0, UPCOMING_EACH);
+  const lists = [pick(movies), pick(shows), pick(games)];
+  const upcoming = [];
+  for (let i = 0; i < UPCOMING_EACH; i++) for (const list of lists) if (list[i]) upcoming.push(list[i]);
+  const mixed = [];
+  let u = 0;
+  trendingTitles.forEach((media, index) => {
+    mixed.push(media);
+    if (index % 4 === 3 && u < upcoming.length) mixed.push(upcoming[u++]);
+  });
+  return mixed.concat(upcoming.slice(u));
+}
+
 async function loadTrending() {
   if ((trending !== null && !trendingError) || loadingTrending) return;
   loadingTrending = true;
   trendingError = null;
-  const [titles, games] = await Promise.allSettled([site.api.trending(), site.api.trendingGames()]);
+  const [titles, games, upcoming, upcomingGames] = await Promise.allSettled([
+    site.api.trending(), site.api.trendingGames(), site.api.upcoming(), site.api.upcomingGames(),
+  ]);
+  // The upcoming lists are extras: if they fail, trending shows without them.
   const failed = [titles.status === "rejected" && "movies and shows", games.status === "rejected" && "games"].filter(Boolean);
   if (failed.length) {
     const reason = (titles.reason ?? games.reason)?.message ?? "";
     trendingError = `Couldn't load trending ${failed.join(" or ")}. ${reason} Press Trending to try again.`.replace(/\s+/g, " ").trim();
   }
-  trending = failed.length === 2 ? null : interleave(titles.value ?? [], games.value ?? []);
+  trending = failed.length === 2 ? null : mixUpcoming(interleave(titles.value ?? [], games.value ?? []), {
+    movies: upcoming.value?.movies, shows: upcoming.value?.shows, games: upcomingGames.value,
+  });
   loadingTrending = false;
   render();
 }

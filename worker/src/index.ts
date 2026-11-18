@@ -38,6 +38,7 @@ type IgdbGame = {
   version_parent?: number;
   parent_game?: number;
   game_type?: number;
+  hypes?: number;
   themes?: { id?: number }[];
   name?: string;
   slug?: string;
@@ -861,6 +862,25 @@ export const rankTrending = (games: IgdbGame[], scores: [number, number][], nowS
   return picked.filter((game) => !isEditionOf((game.name || '').toLowerCase().trim(), names));
 };
 
+// Upcoming: the games most followed before release (IGDB hypes) coming out in the
+// next 30 days.
+const UPCOMING_LIMIT = 6;
+const UPCOMING_DAYS = 30;
+
+const getUpcomingGames = async (env: Env, nowSeconds: number) => {
+  const from = Math.floor(nowSeconds);
+  const to = from + UPCOMING_DAYS * 24 * 60 * 60;
+  const games = await fetchIgdb(env, [
+    `fields ${gameFields},version_parent,parent_game,game_type,themes.id,hypes;`,
+    `where first_release_date > ${from} & first_release_date < ${to} & version_parent = null & hypes > 0;`,
+    'sort hypes desc;',
+    `limit ${UPCOMING_LIMIT * 4};`,
+  ].join(' '));
+  const scores = games.map((game, index): [number, number] => [game.id, games.length - index]);
+  // The same filters as trending; every game here is new, so recency changes nothing.
+  return rankTrending(games, scores, nowSeconds, UPCOMING_LIMIT).map((game) => normalizeGame(game));
+};
+
 const getTrendingGames = async (env: Env) => {
   const body = TRENDING_SIGNALS.map(({ name, type }) =>
     `query popularity_primitives "${name}" { fields game_id,value; where popularity_type = ${type}; sort value desc; limit ${TRENDING_PER_SIGNAL}; };`,
@@ -908,6 +928,9 @@ const withCache = async (
 const TMDB_ROUTES: { pattern: RegExp; params: string[] }[] = [
   { pattern: /^\/search\/multi$/, params: ['query', 'page'] },
   { pattern: /^\/trending\/(all|movie|tv)\/week$/, params: ['page'] },
+  // Upcoming: the clients send a date window and popularity order.
+  { pattern: /^\/discover\/movie$/, params: ['primary_release_date.gte', 'primary_release_date.lte', 'sort_by'] },
+  { pattern: /^\/discover\/tv$/, params: ['first_air_date.gte', 'first_air_date.lte', 'sort_by'] },
   { pattern: /^\/(movie|tv)\/\d{1,10}$/, params: ['append_to_response', 'include_image_language'] },
   { pattern: /^\/(movie|tv)\/\d{1,10}\/(credits|watch\/providers)$/, params: [] },
   { pattern: /^\/movie\/\d{1,10}\/release_dates$/, params: [] },
@@ -930,6 +953,8 @@ export const tmdbProxyPath = (pathname: string, searchParams: URLSearchParams): 
       return { error: 'Unsupported append_to_response' };
     }
     if (key === 'include_image_language' && !/^[a-z,]{1,20}$/.test(value)) return { error: 'Invalid image language' };
+    if (/_date\.(gte|lte)$/.test(key) && !/^\d{4}-\d{2}-\d{2}$/.test(value)) return { error: 'Invalid date' };
+    if (key === 'sort_by' && value !== 'popularity.desc') return { error: 'Unsupported sort' };
     params.set(key, value);
   }
   if (route.params.includes('query') && !(params.get('query') || '').trim()) return { error: 'Search query is required' };
@@ -980,7 +1005,7 @@ const worker = {
       ? 'tmdb'
       : url.pathname === '/api/games/search'
       ? 'search'
-      : url.pathname === '/api/games/trending'
+      : url.pathname === '/api/games/trending' || url.pathname === '/api/games/upcoming'
       ? 'trending'
       : url.pathname.startsWith('/api/games/')
         ? 'details'
@@ -1028,6 +1053,15 @@ const worker = {
         }
         return withCache(request, env, ctx, TRENDING_CACHE_SECONDS, async () => {
           return jsonResponse(request, env, await getTrendingGames(env));
+        });
+      }
+
+      if (url.pathname === '/api/games/upcoming') {
+        if ([...url.searchParams.keys()].length > 0) {
+          return errorResponse(request, env, 400, 'Query parameters are not supported for upcoming games');
+        }
+        return withCache(request, env, ctx, TRENDING_CACHE_SECONDS, async () => {
+          return jsonResponse(request, env, await getUpcomingGames(env, Date.now() / 1000));
         });
       }
 

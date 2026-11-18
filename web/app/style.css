@@ -2,6 +2,7 @@
 :root {
   --bg: #0F1115; --surface: #1A1D23; --fg: #F8FAFC; --cyan: #22D3EE; --silver: #94A3B8;
   --border: rgba(255, 255, 255, 0.1);
+  --amber: #FBBF24;
   --cyan-hover: #67E8F9; --surface-hover: #242830; --border-hover: rgba(255, 255, 255, 0.25);
   --mono: ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, monospace;
   color-scheme: dark;
@@ -35,6 +36,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outl
 .card { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 0; background: none; color: var(--fg); text-align: left; font-weight: 600; }
 .poster { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); display: block; }
 .poster.empty { min-height: 0; }
+/* Trending: titles not out yet. */
+.card.upcoming .poster { border: 2px solid var(--amber); }
+.card.upcoming .meta { color: var(--amber); }
 .card .title { font-size: 13px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .card .meta { font: 700 10px/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--silver); }
 .frame { position: relative; display: block; }
