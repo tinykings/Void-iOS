@@ -1,4 +1,4 @@
-// [void] on the web: storage, Apple sign-in, sync and the returning-shows check, without
+// Void on the web: storage, Apple sign-in, sync and the returning-shows check, without
 // the page. Adapted from Royal Saved's site.mjs. The CloudKit client, library and sync
 // rules are in shared/ and follow docs/sync-schema.md, as iOS does.
 import { CloudKitClient, CloudKitError, VOID_CONTAINER, appleSignInURL, callbackToken, describeCloudKitError } from "../shared/cloudkit.mjs";
@@ -8,7 +8,7 @@ import { accountLibraryKey, createLibrary, LIBRARY_KEY, SYNC_SETTINGS_KEY } from
 import { runSync, SyncPausedError } from "../shared/sync-runner.mjs";
 import { RECORD_TYPE } from "../shared/sync.mjs";
 
-// [void]'s container in Production, with the website's own web API token. In CloudKit
+// Void's container in Production, with the website's own web API token. In CloudKit
 // Console the token's sign-in callback is a URL Redirect to https://void.tinyk.ing/app/ and
 // its allowed origin is void.tinyk.ing only. A web API token identifies the app, not a
 // user, and is meant to be public. Until it's set, sign-in explains what's missing.
@@ -155,7 +155,7 @@ export function createSite({ storage, pending, locks, fetcher, apiFetcher, confi
 
     // Returns Apple's sign-in address to go to.
     beginSignIn: () => exclusive(async () => {
-      if (/^SET_ME/.test(config.apiToken)) throw new Error("[void] on the web isn't set up yet: it needs its CloudKit web API token (site.mjs).");
+      if (/^SET_ME/.test(config.apiToken)) throw new Error("Void on the web isn't set up yet: it needs its CloudKit web API token (site.mjs).");
       await setToken(null);
       try {
         await client().currentUser();

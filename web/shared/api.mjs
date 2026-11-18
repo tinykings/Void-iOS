@@ -1,4 +1,4 @@
-// The [void] API Worker (worker/): TMDB through /api/tmdb, and IGDB games. Results are
+// The Void API Worker (worker/): TMDB through /api/tmdb, and IGDB games. Results are
 // normalized to the media shape library.mjs takes:
 // { source, mediaType, id, title, posterPath, releaseDate, overview, popularity,
 //   status, nextAirDate, genres }
@@ -19,7 +19,7 @@ export function createApi({ fetcher = (...args) => globalThis.fetch(...args), ba
     try {
       response = await fetcher(url.href, { credentials: "omit", signal: AbortSignal.timeout(20000) });
     } catch {
-      throw new Error("Couldn't reach the [void] API. Check your connection.");
+      throw new Error("Couldn't reach the Void API. Check your connection.");
     }
     if (!response.ok) throw new ApiError(response.status);
     return response.json();

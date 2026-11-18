@@ -4,29 +4,29 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- GitHub Pages can't send security headers, so the policy is set here: only this
-       site's own scripts and styles, CloudKit and the [void] API as the only servers it
+       site's own scripts and styles, CloudKit and the Void API as the only servers it
        talks to, TMDB and IGDB images, and Trusted Types so no string can run as HTML. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://image.tmdb.org https://images.igdb.com; connect-src https://api.apple-cloudkit.com https://void-game-api.ryan-inslee.workers.dev; base-uri 'none'; form-action 'none'; upgrade-insecure-requests; require-trusted-types-for 'script'; trusted-types 'none'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="color-scheme" content="dark">
-  <title>[void]</title>
-  <meta name="description" content="Your movies, shows and games from [void] on iPhone.">
+  <title>Void</title>
+  <meta name="description" content="Your movies, shows and games from Void on iPhone.">
   <link rel="icon" href="../icon.png" type="image/png">
   <link rel="apple-touch-icon" href="../apple-touch-icon.png">
   <link rel="stylesheet" href="style.css">
   <script type="module" src="app.mjs"></script>
 </head>
 <body>
-  <noscript><p class="noscript">[void] needs JavaScript.</p></noscript>
+  <noscript><p class="noscript">Void needs JavaScript.</p></noscript>
   <!-- Hidden until app.mjs checks it isn't framed by another page. -->
   <main hidden>
     <header>
-      <h1><img class="logo" src="../app-icon.png" width="32" height="32" alt="">[void]</h1>
+      <h1><img class="logo" src="../app-icon.png" width="32" height="32" alt="">Void</h1>
       <button id="account" class="account" hidden>Sign out</button>
     </header>
     <section id="intro" class="intro" hidden>
       <h2>Movies, shows and games, tracked</h2>
-      <p>Your Playlist and History from [void] on iPhone. Sign in with the same Apple Account your iPhone uses for iCloud; Apple handles the login, and [void] only reads and writes its own data in your private iCloud.</p>
+      <p>Your Playlist and History from Void on iPhone. Sign in with the same Apple Account your iPhone uses for iCloud; Apple handles the login, and Void only reads and writes its own data in your private iCloud.</p>
       <button id="sign-in">Sign in with Apple</button>
     </section>
     <p id="notice" class="problem" role="alert" hidden></p>

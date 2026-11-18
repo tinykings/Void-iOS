@@ -1,5 +1,5 @@
 /* The info page at void.tinyk.ing/. Laid out like royal.tinyk.ing and slipcast.tinyk.ing,
-   in [void]'s own colours (app/style.css): dark ground, cyan accent, mono labels. */
+   in Void's own colours (app/style.css): dark ground, cyan accent, mono labels. */
 :root {
   --bg: #0F1115; --surface: #1A1D23; --fg: #F8FAFC; --muted: #A3AFC2; --cyan: #22D3EE;
   --line: rgba(255, 255, 255, 0.1);

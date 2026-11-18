@@ -1,5 +1,5 @@
 # Publishes web/ on every push to main: the info page at https://void.tinyk.ing/ and
-# [void] on the web at https://void.tinyk.ing/app/.
+# Void on the web at https://void.tinyk.ing/app/.
 name: Pages
 
 on:

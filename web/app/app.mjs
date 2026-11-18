@@ -1,4 +1,4 @@
-// [void] on the web: sign in with Apple, see and change the Playlist and History, search
+// Void on the web: sign in with Apple, see and change the Playlist and History, search
 // to add. Storage, sign-in and sync are in site.mjs.
 import { createSite, describeCloudKitError, CloudKitError, takeCallback } from "./site.mjs";
 import { imageURL, rankSearchResults } from "../shared/api.mjs";
@@ -6,7 +6,7 @@ import { itemFor, listItems, MEDIA_TYPES, recordName } from "../shared/library.m
 
 const main = document.querySelector("main");
 // Inside another site's frame, stay hidden, so nobody can trick clicks.
-if (window.top !== window.self) throw new Error("[void] won't run inside another page.");
+if (window.top !== window.self) throw new Error("Void won't run inside another page.");
 main.hidden = false;
 
 const $ = selector => document.querySelector(selector);
@@ -18,7 +18,7 @@ try {
   localStorage.getItem("voidProbe");
   site = createSite({ storage: localStorage, pending: sessionStorage, locks: navigator.locks });
 } catch {
-  showNotice("[void] needs this browser to allow site data (cookies and storage) for void.tinyk.ing.");
+  showNotice("Void needs this browser to allow site data (cookies and storage) for void.tinyk.ing.");
   throw new Error("Storage unavailable.");
 }
 
