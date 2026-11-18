@@ -3,6 +3,7 @@
 import { createSite, describeCloudKitError, CloudKitError, takeCallback } from "./site.mjs";
 import { imageURL, rankSearchResults, trailerEmbedURL, trailerThumbnailURL } from "../shared/api.mjs";
 import { itemFor, listItems, MEDIA_TYPES, recordName } from "../shared/library.mjs";
+import { legacyItems, LegacyImportError } from "./legacy-import.mjs";
 
 const main = document.querySelector("main");
 // Inside another site's frame, stay hidden, so nobody can trick clicks.
@@ -383,6 +384,25 @@ for (const button of document.querySelectorAll("[data-tab]")) {
     render();
   });
 }
+
+// --- Import (TEMPORARY; see legacy-import.mjs)
+$("#import").addEventListener("click", () => $("#import-file").click());
+$("#import-file").addEventListener("change", async event => {
+  const input = event.currentTarget;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file || !current?.state) return;
+  try {
+    const items = legacyItems(await file.text());
+    const fresh = items.filter(item => !current.state.items[recordName(item)]);
+    if (!fresh.length) { lastMessage = `Nothing to import: all ${items.length} items are already in your library.`; render(); return; }
+    if (!confirm(`Import ${fresh.length} item${fresh.length === 1 ? "" : "s"} into your library? ${items.length - fresh.length} already there will be left as they are.`)) return;
+    apply(await site.importLegacy(fresh), { message: `Imported ${fresh.length} item${fresh.length === 1 ? "" : "s"}. They'll sync to iCloud in a moment.` });
+  } catch (error) {
+    lastMessage = error instanceof LegacyImportError ? error.message : "Couldn't read that file.";
+    render();
+  }
+});
 
 // --- Sync
 let syncing = null, syncTimer, lastSyncAt = 0;
