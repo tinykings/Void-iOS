@@ -36,6 +36,7 @@ type IgdbExternalGame = {
 type IgdbGame = {
   id: number;
   version_parent?: number;
+  parent_game?: number;
   name?: string;
   slug?: string;
   summary?: string;
@@ -130,7 +131,7 @@ const SEARCH_CACHE_SECONDS = 60 * 60;
 const DETAILS_CACHE_SECONDS = 60 * 60 * 24;
 const PRICE_CACHE_SECONDS = 60 * 60;
 const TRENDING_CACHE_SECONDS = 60 * 60 * 6;
-const CACHE_VERSION = 'gg-prices-v2-game-media';
+const CACHE_VERSION = 'gg-prices-v2-game-media-trending-2';
 const MAX_URL_LENGTH = 2048;
 const MAX_SEARCH_QUERY_LENGTH = 100;
 const MAX_PRICE_IDS = 50;
@@ -785,21 +786,23 @@ const getGameDetails = async (env: Env, id: number) => {
 // Trending games: IGDB's popularity primitives, several signals blended so no one
 // platform or audience dominates. Each signal's top games are ranked, and a game's
 // score is the sum of 1 / (k + rank) over the signals it appears in (reciprocal rank
-// fusion), since the raw values aren't on comparable scales.
+// fusion), since the raw values aren't on comparable scales. Signals that measure
+// steady player or viewer counts (IGDB "Playing", Steam peak players, Twitch hours
+// watched) are left out: they keep the same evergreen games on top every week.
 // IDs from IGDB's /popularity_types.
 export const TRENDING_SIGNALS: { name: string; type: number }[] = [
-  { name: 'visits', type: 1 },          // IGDB page visits
-  { name: 'playing', type: 3 },         // IGDB "Playing" lists
-  { name: 'steam_peak', type: 5 },      // Steam 24-hour peak players
-  { name: 'twitch_watched', type: 34 }, // Twitch hours watched, 24 hours
+  { name: 'visits', type: 1 },       // IGDB page visits
+  { name: 'want_to_play', type: 2 }, // IGDB "Want to Play" lists
+  { name: 'top_sellers', type: 9 },  // Steam global top sellers
 ];
 const TRENDING_PER_SIGNAL = 50;
 const TRENDING_LIMIT = 20;
 const TRENDING_RRF_K = 20;
+const YEAR_SECONDS = 365 * 24 * 60 * 60;
 
 type IgdbMultiqueryResult = { name: string; result?: { game_id?: number; value?: number }[] }[];
 
-export const blendTrending = (results: IgdbMultiqueryResult, limit = TRENDING_LIMIT): number[] => {
+export const blendTrending = (results: IgdbMultiqueryResult, limit = TRENDING_LIMIT): [number, number][] => {
   const scores = new Map<number, number>();
   for (const signal of results) {
     const seen = new Set<number>();
@@ -810,7 +813,43 @@ export const blendTrending = (results: IgdbMultiqueryResult, limit = TRENDING_LI
       scores.set(id, (scores.get(id) || 0) + 1 / (TRENDING_RRF_K + seen.size));
     }
   }
-  return [...scores.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, limit).map(([id]) => id);
+  return [...scores.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, limit);
+};
+
+// Games out for more than a year count for less the older they are: half at two
+// years, a third at three. Upcoming and undated games count in full.
+export const recencyWeight = (releaseSeconds: number | undefined, nowSeconds: number) => {
+  if (!releaseSeconds) return 1;
+  const years = (nowSeconds - releaseSeconds) / YEAR_SECONDS;
+  return years <= 1 ? 1 : 1 / years;
+};
+
+// "Minecraft: Java Edition" when "Minecraft" is already listed.
+const isEditionOf = (name: string, others: Set<string>) => {
+  const match = name.toLowerCase().match(/^(.+?):\s.*\bedition$/);
+  return !!match && others.has(match[1].trim());
+};
+
+export const rankTrending = (games: IgdbGame[], scores: [number, number][], nowSeconds: number, limit = TRENDING_LIMIT) => {
+  const byId = new Map(games.map((game) => [game.id, game]));
+  const listedIds = new Set(byId.keys());
+  const ranked = scores
+    .map(([id, score]) => ({ game: byId.get(id), score }))
+    .filter((entry): entry is { game: IgdbGame; score: number } => !!entry.game)
+    .filter(({ game }) => !game.version_parent && !(game.parent_game && listedIds.has(game.parent_game)))
+    .map(({ game, score }) => ({ game, score: score * recencyWeight(game.first_release_date, nowSeconds) }))
+    .sort((a, b) => b.score - a.score || a.game.id - b.game.id);
+  const names = new Set<string>();
+  const picked: IgdbGame[] = [];
+  for (const { game } of ranked) {
+    const name = (game.name || '').toLowerCase().trim();
+    if (names.has(name) || isEditionOf(name, names)) continue;
+    names.add(name);
+    picked.push(game);
+    if (picked.length === limit) break;
+  }
+  // An edition can come before its base game; drop it once the base is in.
+  return picked.filter((game) => !isEditionOf((game.name || '').toLowerCase().trim(), names));
 };
 
 const getTrendingGames = async (env: Env) => {
@@ -818,17 +857,15 @@ const getTrendingGames = async (env: Env) => {
     `query popularity_primitives "${name}" { fields game_id,value; where popularity_type = ${type}; sort value desc; limit ${TRENDING_PER_SIGNAL}; };`,
   ).join('\n');
   const signals = await fetchIgdb<IgdbMultiqueryResult>(env, body, 'multiquery');
-  // Fetch extra so editions and bundles can be dropped without leaving the list short.
-  const ids = blendTrending(signals, TRENDING_LIMIT * 2);
-  if (ids.length === 0) return [];
+  // Extra candidates, since the recency weighting reorders them and editions drop out.
+  const scores = blendTrending(signals, TRENDING_LIMIT * 4);
+  if (scores.length === 0) return [];
   const games = await fetchIgdb(env, [
-    `fields ${gameFields},version_parent;`,
-    `where id = (${ids.join(',')});`,
-    `limit ${ids.length};`,
+    `fields ${gameFields},version_parent,parent_game;`,
+    `where id = (${scores.map(([id]) => id).join(',')});`,
+    `limit ${scores.length};`,
   ].join(' '));
-  const byId = new Map(games.filter((game) => !game.version_parent).map((game) => [game.id, game]));
-  return ids.map((id) => byId.get(id)).filter((game): game is IgdbGame => !!game)
-    .slice(0, TRENDING_LIMIT).map((game) => normalizeGame(game));
+  return rankTrending(games, scores, Date.now() / 1000).map((game) => normalizeGame(game));
 };
 
 const withCache = async (

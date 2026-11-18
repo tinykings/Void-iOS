@@ -52,12 +52,31 @@ test('tmdbProxyPath forwards only known endpoints and parameters', async () => {
 
 test('blendTrending rewards games that rank well across several signals', async () => {
   const { blendTrending } = await import('./index');
-  const ids = blendTrending([
+  const scores = blendTrending([
     { name: 'visits', result: [{ game_id: 1 }, { game_id: 2 }, { game_id: 3 }] },
-    { name: 'playing', result: [{ game_id: 2 }, { game_id: 4 }, { game_id: 2 }] },
-    { name: 'steam_peak', result: [{ game_id: 3 }, { game_id: -1 }, {}] },
-    { name: 'twitch_watched' },
+    { name: 'want_to_play', result: [{ game_id: 2 }, { game_id: 4 }, { game_id: 2 }] },
+    { name: 'top_sellers', result: [{ game_id: 3 }, { game_id: -1 }, {}] },
+    { name: 'empty' },
   ]);
-  assert.deepEqual(ids, [2, 3, 1, 4]);
-  assert.deepEqual(blendTrending([{ name: 'visits', result: [{ game_id: 5 }, { game_id: 6 }] }], 1), [5]);
+  assert.deepEqual(scores.map(([id]) => id), [2, 3, 1, 4]);
+  assert.deepEqual(blendTrending([{ name: 'visits', result: [{ game_id: 5 }, { game_id: 6 }] }], 1).map(([id]) => id), [5]);
+});
+
+test('rankTrending favors recent games and drops editions and duplicates', async () => {
+  const { rankTrending, recencyWeight } = await import('./index');
+  const year = 365 * 24 * 60 * 60;
+  const now = 10 * year;
+  assert.equal(recencyWeight(undefined, now), 1);
+  assert.equal(recencyWeight(now + year, now), 1);
+  assert.equal(recencyWeight(now - 2 * year, now), 0.5);
+  const games = [
+    { id: 1, name: 'Minecraft', first_release_date: now - 5 * year },
+    { id: 2, name: 'Minecraft: Java Edition', first_release_date: now - 5 * year },
+    { id: 3, name: 'New Game', first_release_date: now - year / 2 },
+    { id: 4, name: 'Deluxe', version_parent: 3 },
+    { id: 5, name: 'DLC', parent_game: 3 },
+    { id: 6, name: 'new game' },
+  ];
+  const scores: [number, number][] = [[2, 0.2], [1, 0.1], [4, 0.09], [5, 0.08], [3, 0.05], [6, 0.01]];
+  assert.deepEqual(rankTrending(games, scores, now).map((game) => game.id), [3, 1]);
 });
