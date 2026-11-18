@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- GitHub Pages can't send security headers, so the policy is set here: only this
        site's own scripts and styles, CloudKit and the Void API as the only servers it
-       talks to, TMDB and IGDB images, and Trusted Types so no string can run as HTML. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://image.tmdb.org https://images.igdb.com; connect-src https://api.apple-cloudkit.com https://void-game-api.ryan-inslee.workers.dev; base-uri 'none'; form-action 'none'; upgrade-insecure-requests; require-trusted-types-for 'script'; trusted-types 'none'">
+       talks to, TMDB, IGDB and YouTube thumbnail images, YouTube's privacy-enhanced
+       embed for trailers, and Trusted Types so no string can run as HTML. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://image.tmdb.org https://images.igdb.com https://i.ytimg.com; frame-src https://www.youtube-nocookie.com; connect-src https://api.apple-cloudkit.com https://void-game-api.ryan-inslee.workers.dev; base-uri 'none'; form-action 'none'; upgrade-insecure-requests; require-trusted-types-for 'script'; trusted-types 'none'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="color-scheme" content="dark">
   <title>Void</title>
@@ -45,6 +46,7 @@
     <dialog id="details" aria-label="Details">
       <button id="details-close" class="close" aria-label="Close">✕</button>
       <div id="details-body"></div>
+      <div id="details-extra"></div>
     </dialog>
     <footer>
       <p id="sync-status" class="hint" role="status"></p>

@@ -1,7 +1,7 @@
 // Void on the web: sign in with Apple, see and change the Playlist and History, search
 // to add. Storage, sign-in and sync are in site.mjs.
 import { createSite, describeCloudKitError, CloudKitError, takeCallback } from "./site.mjs";
-import { imageURL, rankSearchResults } from "../shared/api.mjs";
+import { imageURL, rankSearchResults, trailerEmbedURL, trailerThumbnailURL } from "../shared/api.mjs";
 import { itemFor, listItems, MEDIA_TYPES, recordName } from "../shared/library.mjs";
 
 const main = document.querySelector("main");
@@ -206,16 +206,134 @@ function renderDetails() {
   }
 }
 
+// Trailers, cast and seasons sit below, in #details-extra. renderDetails rebuilds the top
+// on every sync, so they're built once per opening and a playing trailer keeps playing.
+const extra = $("#details-extra");
+function section(title) {
+  const node = element("section", "extra");
+  node.append(element("h3", "label", title));
+  extra.append(node);
+  return node;
+}
+
+function renderTrailers(videos) {
+  if (!videos?.length) return;
+  const row = element("div", "row");
+  for (const video of videos) {
+    const tile = element("div", "trailer");
+    const thumb = () => {
+      const button = element("button", "thumb");
+      button.type = "button";
+      button.setAttribute("aria-label", `Play ${video.name}`);
+      const img = element("img");
+      img.src = trailerThumbnailURL(video.key); img.alt = ""; img.loading = "lazy"; img.referrerPolicy = "no-referrer";
+      button.append(img, element("span", "play", "▶"));
+      button.addEventListener("click", () => {
+        // One plays at a time: any other player goes back to its thumbnail.
+        for (const other of row.querySelectorAll(".trailer")) other.stop?.();
+        const player = element("iframe", "player");
+        player.src = trailerEmbedURL(video.key);
+        player.title = video.name;
+        player.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+        player.allowFullscreen = true;
+        // YouTube refuses embeds that don't say which site they're on.
+        player.referrerPolicy = "strict-origin-when-cross-origin";
+        button.replaceWith(player);
+        tile.stop = () => { player.replaceWith(thumb()); tile.stop = null; };
+      });
+      return button;
+    };
+    tile.append(thumb(), element("span", "caption", video.name));
+    row.append(tile);
+  }
+  section("Trailers").append(row);
+}
+
+function renderCast(cast) {
+  if (!cast?.length) return;
+  const row = element("div", "row");
+  for (const person of cast) {
+    const tile = element("div", "person");
+    tile.append(poster(person.profilePath, "w185"), element("span", "caption", person.name));
+    if (person.character) tile.append(element("span", "hint", person.character));
+    row.append(tile);
+  }
+  // Cast arrives after the trailers, so it's kept after them.
+  const node = section("Cast");
+  node.append(row);
+  const seasons = extra.querySelector(".seasons");
+  if (seasons) extra.insertBefore(node, seasons);
+}
+
+function renderSeasons(showID, seasons) {
+  if (!seasons?.length) return;
+  const node = section("Seasons");
+  node.classList.add("seasons");
+  for (const season of seasons) {
+    const box = element("details", "season");
+    const summary = element("summary");
+    summary.append(element("span", null, season.name),
+      element("span", "label", [season.episodeCount != null && `${season.episodeCount} ep`, season.airDate?.slice(0, 4)].filter(Boolean).join(" · ")));
+    const list = element("ol", "episodes");
+    box.append(summary, list);
+    let loaded = false;
+    box.addEventListener("toggle", async () => {
+      if (!box.open || loaded) return;
+      loaded = true;
+      list.replaceChildren(element("li", "hint", "Loading…"));
+      try {
+        const episodes = await site.api.season(showID, season.number);
+        list.replaceChildren(...(episodes.length ? episodes.map(episodeRow) : [element("li", "hint", "No episodes listed yet.")]));
+      } catch {
+        loaded = false;
+        list.replaceChildren(element("li", "hint", "Couldn't load this season. Close and open it to try again."));
+      }
+    });
+    node.append(box);
+  }
+}
+
+// As iOS SeasonView: before an episode airs its still and summary stay hidden until
+// asked for, so nothing is spoiled.
+function episodeRow(episode) {
+  const row = element("li", "episode");
+  const days = daysUntil(episode.airDate);
+  const aired = days != null && days <= 0;
+  const text = element("div");
+  text.append(element("span", "label", `E${episode.episodeNumber}${episode.airDate ? ` · ${shortDate(episode.airDate)}` : ""}`),
+    element("p", "name", episode.name));
+  if (aired) {
+    row.append(episode.stillPath ? poster(episode.stillPath, "w300") : element("div", "poster empty"));
+    if (episode.overview) text.append(element("p", "hint", episode.overview));
+  } else {
+    row.append(element("div", "poster empty"));
+    if (episode.overview) {
+      const reveal = element("button", "link", "Show summary");
+      reveal.type = "button";
+      reveal.addEventListener("click", () => reveal.replaceWith(element("p", "hint", episode.overview)));
+      text.append(reveal);
+    } else text.append(element("p", "hint", "No summary yet."));
+  }
+  row.append(text);
+  return row;
+}
+
 async function openDetails(media) {
   openMedia = media;
   openExtra = null;
+  extra.replaceChildren();
   renderDetails();
   if (!dialog.open) dialog.showModal();
   const opened = media;
+  if (media.mediaType !== "game") {
+    site.api.credits(media.mediaType, media.id).then(cast => { if (openMedia === opened) renderCast(cast); }, () => {});
+  }
   try {
     const full = await site.api.details(media);
     if (openMedia !== opened) return;
     openExtra = { ...full, posterPath: full.posterPath ?? media.posterPath };
+    renderTrailers(full.videos);
+    if (media.mediaType === "tv") renderSeasons(media.id, full.seasons);
     if (media.mediaType === "tv") {
       details[recordName({ source: "tmdb", mediaType: "tv", mediaID: media.id })] = { nextAirDate: full.nextAirDate, at: Date.now() };
       saveDetails();
@@ -233,7 +351,7 @@ async function openDetails(media) {
 }
 $("#details-close").addEventListener("click", () => dialog.close());
 dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
-dialog.addEventListener("close", () => { openMedia = null; render(); });
+dialog.addEventListener("close", () => { openMedia = null; extra.replaceChildren(); render(); });
 
 // --- Search
 let searching = false, searchTimer, searchToken = 0;

@@ -47,6 +47,29 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
 .actions button.on { background: var(--cyan); color: var(--bg); }
 .overview { margin: 0 0 12px; }
+.extra { margin-top: 18px; }
+.extra h3 { margin: 0 0 8px; }
+.row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+.caption { display: block; font-size: 12px; font-weight: 600; line-height: 1.3; margin-top: 5px; }
+.trailer { flex: 0 0 min(300px, 78vw); }
+.thumb, .player { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; border: 1px solid var(--border); }
+.thumb { position: relative; padding: 0; overflow: hidden; background: var(--bg); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.play { position: absolute; inset: 0; margin: auto; width: 48px; height: 48px; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; display: grid; place-items: center; font-size: 18px; }
+.player { border: 0; background: #000; }
+.person { flex: 0 0 76px; }
+.person .poster { aspect-ratio: 76 / 100; border-radius: 8px; }
+.person .hint { display: block; font-size: 11px; line-height: 1.3; }
+.season { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
+.season summary { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 10px 12px; cursor: pointer; font-weight: 600; }
+.episodes { list-style: none; margin: 0; padding: 0 12px 10px; }
+.episode { display: grid; grid-template-columns: 128px 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border); }
+.episode .poster { aspect-ratio: 16 / 9; border-radius: 6px; }
+.episode p { margin: 2px 0; }
+.episode .name { font-weight: 600; }
+.episode .hint { font-size: 12px; }
+button.link { background: none; color: var(--cyan); padding: 2px 0; font-size: 12px; }
+@media (max-width: 420px) { .episode { grid-template-columns: 96px 1fr; } }
 footer { margin-top: 32px; border-top: 1px solid var(--border); padding-top: 10px; }
 .noscript { padding: 20px; }
 @media (prefers-reduced-motion: no-preference) { .card .poster { transition: transform 0.15s ease-out; } .card:hover .poster { transform: translateY(-2px); } }

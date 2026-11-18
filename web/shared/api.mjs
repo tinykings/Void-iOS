@@ -1,7 +1,7 @@
 // The Void API Worker (worker/): TMDB through /api/tmdb, and IGDB games. Results are
 // normalized to the media shape library.mjs takes:
 // { source, mediaType, id, title, posterPath, releaseDate, overview, popularity,
-//   status, nextAirDate, genres }
+//   status, nextAirDate, genres, videos, seasons }
 export const API_BASE = "https://void-game-api.ryan-inslee.workers.dev";
 
 export class ApiError extends Error {
@@ -43,7 +43,21 @@ export function createApi({ fetcher = (...args) => globalThis.fetch(...args), ba
         if (source !== "igdb") throw new ApiError(404);
         return fromGame(await get(`/api/games/${id}`));
       }
-      return fromTMDB(await get(`/api/tmdb/${mediaType}/${id}`), mediaType);
+      // The same parameters as iOS, so both share the Worker's cached response.
+      return fromTMDB(await get(`/api/tmdb/${mediaType}/${id}`, { append_to_response: "videos,images", include_image_language: "en,null" }), mediaType);
+    },
+    async credits(mediaType, id) {
+      const data = await get(`/api/tmdb/${mediaType}/${id}/credits`);
+      return (data.cast ?? []).filter(p => Number.isSafeInteger(p?.id) && p.name).slice(0, 20)
+        .map(p => ({ id: p.id, name: p.name, character: p.character || null, profilePath: typeof p.profile_path === "string" ? p.profile_path : null }));
+    },
+    async season(showID, number) {
+      const data = await get(`/api/tmdb/tv/${showID}/season/${number}`);
+      return (data.episodes ?? []).filter(e => Number.isSafeInteger(e?.id) && Number.isSafeInteger(e.episode_number)).map(e => ({
+        id: e.id, name: e.name || `Episode ${e.episode_number}`, overview: e.overview || "",
+        airDate: e.air_date || null, episodeNumber: e.episode_number,
+        stillPath: typeof e.still_path === "string" ? e.still_path : null,
+      }));
     },
     async providers(mediaType, id) {
       const data = await get(`/api/tmdb/${mediaType}/${id}/watch/providers`);
@@ -64,8 +78,26 @@ export function fromTMDB(raw, mediaType = raw?.media_type) {
     status: raw.status ?? null,
     nextAirDate: raw.next_episode_to_air?.air_date ?? null,
     genres: (raw.genres ?? []).map(genre => genre?.name).filter(Boolean),
+    videos: trailers(raw.videos?.results),
+    // Specials (season 0) only when they're all there is, as on iOS.
+    seasons: (Array.isArray(raw.seasons) ? raw.seasons : [])
+      .filter(s => Number.isSafeInteger(s?.season_number) && s.season_number >= 0)
+      .filter((s, _, all) => s.season_number > 0 || all.length === 1)
+      .map(s => ({ number: s.season_number, name: s.name || `Season ${s.season_number}`, episodeCount: s.episode_count ?? null, airDate: s.air_date || null })),
   };
 }
+
+// YouTube trailers and teasers, at most three, as iOS DetailsView. The key goes into an
+// embed URL, so it's held to YouTube's ID characters.
+export function trailers(videos) {
+  return (Array.isArray(videos) ? videos : [])
+    .filter(v => v?.site === "YouTube" && /^[A-Za-z0-9_-]{1,64}$/.test(v.key ?? "") && (v.type === "Trailer" || v.type === "Teaser"))
+    .slice(0, 3)
+    .map(v => ({ key: v.key, name: v.name || "Trailer" }));
+}
+
+export const trailerEmbedURL = key => `https://www.youtube-nocookie.com/embed/${key}?autoplay=1&playsinline=1&rel=0`;
+export const trailerThumbnailURL = key => `https://i.ytimg.com/vi/${key}/hqdefault.jpg`;
 
 export function fromGame(raw) {
   if (!raw || !Number.isSafeInteger(raw.id)) return null;
@@ -79,6 +111,8 @@ export function fromGame(raw) {
     status: null, nextAirDate: null,
     genres: Array.isArray(raw.genres) ? raw.genres.filter(genre => typeof genre === "string") : [],
     platforms: Array.isArray(raw.platforms) ? raw.platforms.filter(p => typeof p === "string") : [],
+    videos: trailers(raw.videos),
+    seasons: [],
   };
 }
 
