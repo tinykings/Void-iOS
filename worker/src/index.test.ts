@@ -76,7 +76,9 @@ test('rankTrending favors recent games and drops editions and duplicates', async
     { id: 4, name: 'Deluxe', version_parent: 3 },
     { id: 5, name: 'DLC', parent_game: 3 },
     { id: 6, name: 'new game' },
+    { id: 7, name: 'Expansion', game_type: 1 },
+    { id: 8, name: 'Adult', themes: [{ id: 42 }] },
   ];
-  const scores: [number, number][] = [[2, 0.2], [1, 0.1], [4, 0.09], [5, 0.08], [3, 0.05], [6, 0.01]];
+  const scores: [number, number][] = [[2, 0.2], [1, 0.1], [4, 0.09], [5, 0.08], [3, 0.05], [6, 0.01], [7, 1], [8, 1]];
   assert.deepEqual(rankTrending(games, scores, now).map((game) => game.id), [3, 1]);
 });

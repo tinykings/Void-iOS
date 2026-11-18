@@ -37,6 +37,8 @@ type IgdbGame = {
   id: number;
   version_parent?: number;
   parent_game?: number;
+  game_type?: number;
+  themes?: { id?: number }[];
   name?: string;
   slug?: string;
   summary?: string;
@@ -131,7 +133,7 @@ const SEARCH_CACHE_SECONDS = 60 * 60;
 const DETAILS_CACHE_SECONDS = 60 * 60 * 24;
 const PRICE_CACHE_SECONDS = 60 * 60;
 const TRENDING_CACHE_SECONDS = 60 * 60 * 6;
-const CACHE_VERSION = 'gg-prices-v2-game-media-trending-2';
+const CACHE_VERSION = 'gg-prices-v2-game-media-trending-3';
 const MAX_URL_LENGTH = 2048;
 const MAX_SEARCH_QUERY_LENGTH = 100;
 const MAX_PRICE_IDS = 50;
@@ -824,6 +826,11 @@ export const recencyWeight = (releaseSeconds: number | undefined, nowSeconds: nu
   return years <= 1 ? 1 : 1 / years;
 };
 
+// IGDB game types that are a game in their own right: main game, standalone
+// expansion, remake, remaster, expanded game. Not DLC, bundles, mods, episodes or packs.
+const TRENDING_GAME_TYPES = new Set([0, 4, 8, 9, 10]);
+const EROTIC_THEME = 42;
+
 // "Minecraft: Java Edition" when "Minecraft" is already listed.
 const isEditionOf = (name: string, others: Set<string>) => {
   const match = name.toLowerCase().match(/^(.+?):\s.*\bedition$/);
@@ -837,6 +844,8 @@ export const rankTrending = (games: IgdbGame[], scores: [number, number][], nowS
     .map(([id, score]) => ({ game: byId.get(id), score }))
     .filter((entry): entry is { game: IgdbGame; score: number } => !!entry.game)
     .filter(({ game }) => !game.version_parent && !(game.parent_game && listedIds.has(game.parent_game)))
+    .filter(({ game }) => game.game_type === undefined || TRENDING_GAME_TYPES.has(game.game_type))
+    .filter(({ game }) => !(game.themes || []).some((theme) => theme.id === EROTIC_THEME))
     .map(({ game, score }) => ({ game, score: score * recencyWeight(game.first_release_date, nowSeconds) }))
     .sort((a, b) => b.score - a.score || a.game.id - b.game.id);
   const names = new Set<string>();
@@ -861,7 +870,7 @@ const getTrendingGames = async (env: Env) => {
   const scores = blendTrending(signals, TRENDING_LIMIT * 4);
   if (scores.length === 0) return [];
   const games = await fetchIgdb(env, [
-    `fields ${gameFields},version_parent,parent_game;`,
+    `fields ${gameFields},version_parent,parent_game,game_type,themes.id;`,
     `where id = (${scores.map(([id]) => id).join(',')});`,
     `limit ${scores.length};`,
   ].join(' '));
