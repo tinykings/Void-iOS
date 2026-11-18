@@ -15,9 +15,12 @@ and `schemaVersion`, which are Int(64). No indexes are required.
 ## Zone
 
 Private database, custom zone **`VoidSync`**, so clients can fetch incremental changes
-with a sync token (`records/changes` on the web, `recordZoneChanges` on iOS). Clients
-create the zone if it's missing. If the zone disappears (the user deleted iCloud
-data), a client recreates it and pushes its pending intentions again.
+with a sync token (`records/changes` on the web, `recordZoneChanges` on iOS). Only
+iOS creates the zone, when it's missing; if it disappears (the user deleted iCloud
+data), iOS recreates it and pushes its pending intentions again. The website never
+creates it: Void on the web is only for people using Void for iPhone. With no zone it
+pushes nothing, keeps its pending intentions, and shows an empty iCloud as "start with
+Void on iPhone".
 
 Times are ISO 8601 UTC strings with milliseconds (`2026-11-13T22:04:05.123Z`).
 Calendar dates (`releaseDate`, `returnedFor`) are `YYYY-MM-DD`. Do not copy Swift

@@ -11,6 +11,7 @@ export function fakeCloudKit() {
     requests: [],
     signIn(token, user) { users.set(token, user); },
     deleteZone(user, zoneName) { zones.delete(`${user}/${zoneName}`); },
+    hasZone(user, zoneName = "VoidSync") { return zones.has(`${user}/${zoneName}`); },
     records(user, zoneName = "VoidSync") { return [...(zones.get(`${user}/${zoneName}`)?.records.values() ?? [])].filter(r => !r.deleted); },
   };
   const reply = (body, status = 200) => ({ ok: status < 400, status, json: async () => body });

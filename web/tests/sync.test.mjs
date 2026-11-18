@@ -42,8 +42,31 @@ async function device(server, token) {
   const account = await api.currentUser();
   const settings = { account, container: config.container, environment: config.environment };
   await library.useAccount(settings);
-  return { api, library, key: accountLibraryKey(settings), sync: () => runSync({ api, library }) };
+  return { api, library, key: accountLibraryKey(settings), sync: options => runSync({ api, library, ...options }) };
 }
+
+test("the website never creates the zone; it waits for the iPhone app's", async () => {
+  const server = fakeCloudKit();
+  server.signIn("a", "_user");
+  server.signIn("b", "_user");
+  const web = await device(server, "b");
+  await web.library.change(s => togglePlaylist(s, show));
+  const first = await web.sync({ createZone: false });
+  assert.equal(first.noZone, true);
+  assert.equal(first.pending, 1);
+  assert.equal(server.hasZone("_user"), false);
+  assert.ok((await web.library.read(web.key)).sync.lastSync);
+
+  const phone = await device(server, "a");
+  await phone.library.change(s => toggleHistory(s, show));
+  await phone.sync();
+  const second = await web.sync({ createZone: false });
+  assert.equal(second.noZone, undefined);
+  assert.equal(second.pending, 0);
+  const remote = server.records("_user");
+  assert.equal(remote.length, 1);
+  assert.equal(remote[0].fields.list.value, "playlist", "the web's pending change went up once the zone existed");
+});
 
 test("two devices converge, keeping each one's pending field", async () => {
   const server = fakeCloudKit();

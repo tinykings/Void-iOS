@@ -110,12 +110,24 @@ function render() {
   const signedIn = current.signedIn;
   const synced = current.sync?.enabled;
   const firstVisit = !(synced || signedIn || LOCAL_PREVIEW);
+  // Only for people who use Void for iPhone: after sign-in, nothing shows until the
+  // first sync is done, and an iCloud with no Void data at all gets sent to the app.
+  const preview = LOCAL_PREVIEW && !synced;
+  const loading = !firstVisit && !preview && !current.sync.lastSync;
+  const needsApp = !firstVisit && !preview && !loading && Object.keys(current.state?.items ?? {}).length === 0;
   $("#account").textContent = signedIn ? "Sign out" : "Sign in again";
   $("#account").classList.toggle("secondary", signedIn);
   $("#account").hidden = firstVisit;
   $("#intro").hidden = !firstVisit;
-  $("#library").hidden = firstVisit;
-  if (firstVisit) { showNotice(lastMessage); return; }
+  $("#loading").hidden = !loading;
+  $("#needs-app").hidden = !needsApp;
+  $("#library").hidden = firstVisit || loading || needsApp;
+  if (firstVisit || loading || needsApp) {
+    if (dialog.open) dialog.close();
+    showNotice(lastMessage);
+    $("#sync-status").textContent = "";
+    return;
+  }
 
   for (const button of document.querySelectorAll("[data-tab]")) button.setAttribute("aria-pressed", String(button.dataset.tab === tab));
   const chips = $("#chips");
@@ -405,6 +417,12 @@ $("#import-file").addEventListener("change", async event => {
     lastMessage = error instanceof LegacyImportError ? error.message : "Couldn't read that file.";
     render();
   }
+});
+
+$("#check-again").addEventListener("click", async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try { await syncNow(); } finally { button.disabled = false; }
 });
 
 // --- Sync

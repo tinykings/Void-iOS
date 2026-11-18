@@ -101,9 +101,10 @@ export function createSite({ storage, pending, locks, fetcher, apiFetcher, confi
       const ck = itemsOnly(client());
       if (!(await getToken())) throw new CloudKitError("AUTHENTICATION_REQUIRED");
       if (!(await library.settings())) await useAccount(ck);
-      const result = await runSync({ api: ck, library, now });
+      const result = await runSync({ api: ck, library, now, createZone: false });
       ok = true;
-      message = result.failed ? `${result.failed} change${result.failed === 1 ? " was" : "s were"} refused; ${result.pending} pending.` : null;
+      message = result.noZone && result.pending ? "Void's iCloud data is gone. Open Void on your iPhone to set up sync again; changes made here stay pending until then."
+        : result.failed ? `${result.failed} change${result.failed === 1 ? " was" : "s were"} refused; ${result.pending} pending.` : null;
     } catch (error) {
       message = syncMessage(error);
     }

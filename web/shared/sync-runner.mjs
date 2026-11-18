@@ -11,7 +11,9 @@ const MAX_ROUNDS = 4;
 
 export class SyncPausedError extends Error {}
 
-export async function runSync({ api, library, now = () => Date.now() }) {
+// `createZone: false` (the website): never create the VoidSync zone; only Void for
+// iPhone does. When it's missing nothing is pushed and the result says `noZone`.
+export async function runSync({ api, library, now = () => Date.now(), createZone = true }) {
   const settings = await library.settings();
   if (!settings) throw new SyncPausedError("Sync is off.");
   if (settings.environment !== api.config.environment || settings.container !== api.config.container) {
@@ -26,7 +28,7 @@ export async function runSync({ api, library, now = () => Date.now() }) {
 
   let state = await library.read(key);
   if (!state?.sync) throw new SyncPausedError("This account's library is missing. Sign out and sign in again.");
-  if (!state.sync.zoneReady) {
+  if (!state.sync.zoneReady && createZone) {
     await api.ensureSyncZone();
     state = await setSync(() => ({ zoneReady: true }));
   }
@@ -39,6 +41,12 @@ export async function runSync({ api, library, now = () => Date.now() }) {
       try { changes = await api.zoneChanges(state.sync.syncToken); }
       catch (error) {
         if (!(error instanceof CloudKitError)) throw error;
+        if (error.code === "ZONE_NOT_FOUND" && !createZone) {
+          // No Void data in this iCloud (or it was deleted). Keep pending intentions
+          // for when the iPhone app creates the zone again.
+          state = await setSync(() => ({ zoneReady: false, syncToken: null, tags: {}, lastSync: now() }));
+          return { pulled, pushed, failed, pending: pendingCount(state), noZone: true };
+        }
         if (error.code === "ZONE_NOT_FOUND") {
           // The zone was deleted (for example from iCloud settings). Start over,
           // keeping local pending intentions; every record is created anew.
@@ -53,6 +61,7 @@ export async function runSync({ api, library, now = () => Date.now() }) {
         throw error;
       }
       pulled += changes.records.length;
+      if (!state.sync.zoneReady) state = await setSync(() => ({ zoneReady: true }));
       state = await library.apply(key, current => {
         const next = applyRemoteChanges(current, changes.records);
         next.sync.syncToken = changes.syncToken;
