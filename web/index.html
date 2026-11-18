@@ -3,53 +3,126 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- GitHub Pages can't send security headers, so the policy is set here: only this
-       site's own scripts and styles, CloudKit and the [void] API as the only servers it
-       talks to, TMDB and IGDB images, and Trusted Types so no string can run as HTML. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://image.tmdb.org https://images.igdb.com; connect-src https://api.apple-cloudkit.com https://void-game-api.ryan-inslee.workers.dev; base-uri 'none'; form-action 'none'; upgrade-insecure-requests; require-trusted-types-for 'script'; trusted-types 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="color-scheme" content="dark">
-  <title>[void]</title>
-  <meta name="description" content="Your movies, shows and games from [void] on iPhone.">
+  <title>[void] — movies, shows and games to watch and play</title>
+  <meta name="description" content="[void] is an open-source iPhone app that tracks the movies, shows and games you want to watch or play, synced through your private iCloud. No accounts, no tracking.">
   <link rel="icon" href="icon.png" type="image/png">
-  <link rel="apple-touch-icon" href="icon.png">
-  <link rel="stylesheet" href="style.css">
-  <script type="module" src="app.mjs"></script>
+  <link rel="apple-touch-icon" href="app-icon.png">
+  <link rel="stylesheet" href="home.css">
 </head>
 <body>
-  <noscript><p class="noscript">[void] needs JavaScript.</p></noscript>
-  <!-- Hidden until app.mjs checks it isn't framed by another page. -->
-  <main hidden>
-    <header>
-      <h1>[void]</h1>
-      <button id="account" class="account" hidden>Sign out</button>
-    </header>
-    <section id="intro" class="intro" hidden>
-      <h2>Movies, shows and games, tracked</h2>
-      <p>Your Playlist and History from [void] on iPhone. Sign in with the same Apple Account your iPhone uses for iCloud; Apple handles the login, and [void] only reads and writes its own data in your private iCloud.</p>
-      <button id="sign-in">Sign in with Apple</button>
-    </section>
-    <p id="notice" class="problem" role="alert" hidden></p>
-    <section id="library" hidden>
-      <nav class="tabs" aria-label="Lists">
-        <button type="button" data-tab="playlist" aria-pressed="true">Playlist</button>
-        <button type="button" data-tab="history" aria-pressed="false">History</button>
-        <form id="search-form" role="search">
-          <input id="search" type="search" placeholder="Search movies, shows and games" aria-label="Search movies, shows and games" autocomplete="off" spellcheck="false">
-        </form>
-      </nav>
-      <div id="chips" class="chips"></div>
-      <p id="status" class="label" role="status"></p>
-      <div id="grid" class="grid"></div>
-    </section>
-    <dialog id="details" aria-label="Details">
-      <button id="details-close" class="close" aria-label="Close">✕</button>
-      <div id="details-body"></div>
-    </dialog>
-    <footer>
-      <p id="sync-status" class="hint" role="status"></p>
-      <p class="hint">Movie and show data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming data from JustWatch. Game data from IGDB. <a href="privacy.html">Privacy</a></p>
-    </footer>
+<div class="wrap">
+  <nav aria-label="Main navigation">
+    <a href="#features">Features</a>
+    <a href="app/">Web</a>
+    <a href="#privacy">Privacy</a>
+    <a href="https://github.com/tinykings/Void-iOS">GitHub</a>
+  </nav>
+
+  <header class="hero">
+    <div class="title">
+      <img class="icon" src="app-icon.png" width="76" height="76" alt="[void] app icon">
+      <div>
+        <h1>[void]</h1>
+        <p>For iPhone, iOS 17 or later.</p>
+      </div>
+    </div>
+    <p class="lede">[void] keeps the movies, shows and games you want to watch or play in one Playlist, and the ones you've finished in your History. It tells you when a show you watch is back, where to stream what's next and what the games cost. Your library lives in your own iCloud, and there's no account to make.</p>
+    <div class="get">
+      <span class="soon">Coming to the App Store</span>
+      <a class="button" href="app/">Open [void] on the web</a>
+      <a href="https://github.com/tinykings/Void-iOS">Source code</a>
+    </div>
+  </header>
+
+  <main>
+  <section id="features">
+    <h2>What it does</h2>
+    <dl class="list">
+      <div>
+        <dt>Playlist</dt>
+        <dd>Everything you mean to get to, movies, shows and games together. Shows with an episode airing in the next 30 days, and movies and games coming out in that time, move to the top with a countdown of the days left.</dd>
+      </div>
+      <div>
+        <dt>History</dt>
+        <dd>Mark something played and it moves here. Favorites live in History.</dd>
+      </div>
+      <div>
+        <dt>Returning shows</dt>
+        <dd>When a show in your History has a new episode airing within a week, it moves back to the Playlist on its own, once per episode, and stays until you mark it played.</dd>
+      </div>
+      <div>
+        <dt>Notifications</dt>
+        <dd>Optionally, a reminder at 9 in the morning on the day a new episode airs or a movie or game on your Playlist comes out. They're scheduled on your iPhone; nothing is sent to a server.</dd>
+      </div>
+      <div>
+        <dt>Search</dt>
+        <dd>Movies, shows and games in one search. Details show the cast, seasons and episodes, trailers you can play in place, where to stream it, How Long to Beat and current prices.</dd>
+      </div>
+      <div>
+        <dt>Stream</dt>
+        <dd>Which US subscription services carry what's on your Playlist, the ones covering the most first, to help you pick what to subscribe to this month.</dd>
+      </div>
+      <div>
+        <dt>Deals</dt>
+        <dd>Current prices for the games on your Playlist, cheapest first.</dd>
+      </div>
+      <div>
+        <dt>iCloud sync</dt>
+        <dd>Your library syncs through your private iCloud between your devices and with [void] on the web.</dd>
+      </div>
+      <div>
+        <dt>On the web</dt>
+        <dd>See and change your Playlist and History from any browser at <a href="app/">void.tinyk.ing/app</a>. Sign in with the Apple Account your iPhone uses for iCloud; your library comes straight from your private iCloud.</dd>
+      </div>
+    </dl>
+    <p class="note">Coming from the old [void] webapp? Download <code>void-data.json</code> from your [void] Gist (the Raw button), then choose Settings › Import from the old [void] webapp. Items already in your library are left as they are.</p>
+  </section>
+
+  <section id="privacy" class="privacy">
+    <h2>Privacy Policy</h2>
+    <p class="muted">Effective November 18, 2026</p>
+
+    <p class="summary">The short version: [void] has no accounts of its own, no analytics, no advertising and no tracking. Your library is stored on your device and in your own private iCloud, which the developer can't read.</p>
+
+    <p>This policy covers the [void] app for iPhone (“[void]”, “the app”), [void] on the web at void.tinyk.ing/app/, and this page. [void] is open source, so everything described here can be checked in the <a href="https://github.com/tinykings/Void-iOS">source code</a>.</p>
+
+    <h3>Your library</h3>
+    <p>Your Playlist and History (titles, the dates you added them, favorites and ratings) are stored on your device and in your own private iCloud database through Apple's CloudKit, so they sync between your devices and with [void] on the web. This data is held by Apple under <a href="https://www.apple.com/legal/privacy/">Apple's Privacy Policy</a> and is not accessible to the developer. You can turn off iCloud for [void] in the Settings app, and deleting [void]'s data in your iCloud settings removes it.</p>
+
+    <h3>Looking things up</h3>
+    <p>To search and show details, [void] sends the title or ID you look up to the [void] API, which asks The Movie Database (TMDB), IGDB, HowLongToBeat and GG.deals on your behalf. These requests carry no account or identifier of yours, though, like any web request, they come from your IP address. The API doesn't log what you search for. It caches public results for a short time, counts requests per IP address for a minute to limit abuse, and logs only errors and blocked requests, without search text. Images load directly from TMDB and IGDB, and trailers play from YouTube under <a href="https://policies.google.com/privacy">Google's privacy policy</a>.</p>
+
+    <h3>Notifications</h3>
+    <p>If you turn on notifications for new episodes and releases, they're scheduled as local notifications on your iPhone from your Playlist. Nothing about them is sent anywhere.</p>
+
+    <h3>On the web</h3>
+    <p>You sign in on Apple's own page; the site then talks only to Apple's CloudKit service and the [void] API. It keeps your CloudKit sign-in token and a copy of your library in your browser's local storage, and choosing <strong>Sign out</strong> removes both from that browser. The site has no analytics and sets no cookies of its own.</p>
+
+    <h3>Links</h3>
+    <p>Streaming links open JustWatch, and price links open GG.deals, under their own privacy policies.</p>
+
+    <h3>Tracking</h3>
+    <p>[void] does not track you across apps or websites, and does not share data with data brokers or advertisers.</p>
+
+    <h3>Children</h3>
+    <p>[void] is not directed at children under 13 and does not knowingly collect information from anyone, including children.</p>
+
+    <h3>Changes to this policy</h3>
+    <p>If this policy changes, the updated version will be posted on this page with a new effective date. Every past version is in the project's <a href="https://github.com/tinykings/Void-iOS/commits/main/web/index.html">change history</a>.</p>
+
+    <h3>Contact</h3>
+    <p>Questions about privacy? Open an issue on <a href="https://github.com/tinykings/Void-iOS/issues">GitHub</a>.</p>
+  </section>
   </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    [void] is open source. Movie and show data from TMDB; this product uses the TMDB API but is not endorsed or certified by TMDB. Streaming data from JustWatch. Game data from IGDB and HowLongToBeat; prices from GG.deals. Names of these services are trademarks of their respective owners.
+  </div>
+</footer>
 </body>
 </html>

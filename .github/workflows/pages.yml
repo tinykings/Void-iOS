@@ -1,4 +1,5 @@
-# Publishes [void] on the web (web/) at https://void.tinyk.ing/ on every push to main.
+# Publishes web/ on every push to main: the info page at https://void.tinyk.ing/ and
+# [void] on the web at https://void.tinyk.ing/app/.
 name: Pages
 
 on:
@@ -33,7 +34,7 @@ jobs:
       - name: Build
         run: |
           mkdir -p _site
-          cp -R web/index.html web/privacy.html web/app.mjs web/site.mjs web/style.css web/icon.png web/shared _site/
+          cp -R web/index.html web/privacy.html web/home.css web/icon.png web/app-icon.png web/app web/shared _site/
           echo void.tinyk.ing > _site/CNAME
           touch _site/.nojekyll
           find _site -type f | sort

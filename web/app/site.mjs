@@ -1,15 +1,15 @@
 // [void] on the web: storage, Apple sign-in, sync and the returning-shows check, without
 // the page. Adapted from Royal Saved's site.mjs. The CloudKit client, library and sync
 // rules are in shared/ and follow docs/sync-schema.md, as iOS does.
-import { CloudKitClient, CloudKitError, VOID_CONTAINER, appleSignInURL, callbackToken, describeCloudKitError } from "./shared/cloudkit.mjs";
-import { createApi } from "./shared/api.mjs";
-import { isInLocalDayWindow, needsReturnCheck, RETURN_WINDOW_DAYS, returnToPlaylist, togglePlaylist, toggleHistory, toggleFavorite } from "./shared/library.mjs";
-import { accountLibraryKey, createLibrary, LIBRARY_KEY, SYNC_SETTINGS_KEY } from "./shared/store.mjs";
-import { runSync, SyncPausedError } from "./shared/sync-runner.mjs";
-import { RECORD_TYPE } from "./shared/sync.mjs";
+import { CloudKitClient, CloudKitError, VOID_CONTAINER, appleSignInURL, callbackToken, describeCloudKitError } from "../shared/cloudkit.mjs";
+import { createApi } from "../shared/api.mjs";
+import { isInLocalDayWindow, needsReturnCheck, RETURN_WINDOW_DAYS, returnToPlaylist, togglePlaylist, toggleHistory, toggleFavorite } from "../shared/library.mjs";
+import { accountLibraryKey, createLibrary, LIBRARY_KEY, SYNC_SETTINGS_KEY } from "../shared/store.mjs";
+import { runSync, SyncPausedError } from "../shared/sync-runner.mjs";
+import { RECORD_TYPE } from "../shared/sync.mjs";
 
 // [void]'s container in Production, with the website's own web API token. In CloudKit
-// Console the token's sign-in callback is a URL Redirect to https://void.tinyk.ing/ and
+// Console the token's sign-in callback is a URL Redirect to https://void.tinyk.ing/app/ and
 // its allowed origin is void.tinyk.ing only. A web API token identifies the app, not a
 // user, and is meant to be public. Until it's set, sign-in explains what's missing.
 export const SITE_CLOUDKIT = Object.freeze({

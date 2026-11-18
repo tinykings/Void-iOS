@@ -86,7 +86,7 @@ struct SettingsView: View {
                 } header: {
                     Text("iCloud")
                 } footer: {
-                    Text("Your library syncs through your private iCloud database with your other devices and with [void] on the web at void.tinyk.ing (sign in with the same Apple Account).")
+                    Text("Your library syncs through your private iCloud database with your other devices and with [void] on the web at void.tinyk.ing/app (sign in with the same Apple Account).")
                 }
 
                 Section {

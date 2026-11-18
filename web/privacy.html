@@ -3,28 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'">
+  <!-- The privacy policy moved to the info page; this address is in the app and the App
+       Store listing, so it forwards there. -->
+  <meta http-equiv="refresh" content="0; url=./#privacy">
   <meta name="color-scheme" content="dark">
   <title>[void] Privacy Policy</title>
-  <link rel="icon" href="icon.png" type="image/png">
-  <link rel="stylesheet" href="style.css">
+  <link rel="canonical" href="https://void.tinyk.ing/#privacy">
+  <link rel="stylesheet" href="home.css">
 </head>
 <body>
-  <main>
-    <header><h1><a href="./" style="color: inherit; text-decoration: none">[void]</a></h1></header>
-    <h2>Privacy Policy</h2>
-    <p class="hint">Last updated November 13, 2026</p>
-    <p>[void] tracks the movies, shows and games you want to watch or play and the ones you have. It has no accounts of its own, no analytics, no advertising and no tracking.</p>
-    <h3>Your library</h3>
-    <p>Your Playlist and History (titles, dates you added them, favorites and ratings) are stored on your device and in your own private iCloud database through Apple's CloudKit, so they sync between your devices and with [void] on the web. The developer cannot read your private iCloud data. Deleting [void]'s data in your iCloud settings removes it.</p>
-    <h3>Looking things up</h3>
-    <p>To search and show details, [void] sends the title or ID you look up to the [void] API, which asks The Movie Database (TMDB), IGDB, HowLongToBeat and GG.deals on your behalf. These requests carry no account or identifier of yours, though, like any web request, they come from your IP address. The API doesn't log what you search for. It caches public results for a short time, counts requests per IP address for a minute to limit abuse, and logs only errors and blocked requests, without search text. Images load from TMDB and IGDB.</p>
-    <h3>On the web</h3>
-    <p>The website keeps your CloudKit sign-in token and a copy of your library in your browser's local storage. Signing out removes both.</p>
-    <h3>Links</h3>
-    <p>Streaming links open JustWatch, and price links open GG.deals, under their own privacy policies.</p>
-    <h3>Contact</h3>
-    <p>Questions: open an issue at <a href="https://github.com/tinykings/void-ios">github.com/tinykings/void-ios</a>.</p>
-  </main>
+  <div class="wrap"><p>The [void] privacy policy is at <a href="./#privacy">void.tinyk.ing/#privacy</a>.</p></div>
 </body>
 </html>

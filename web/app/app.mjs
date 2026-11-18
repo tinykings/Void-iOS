@@ -1,8 +1,8 @@
 // [void] on the web: sign in with Apple, see and change the Playlist and History, search
 // to add. Storage, sign-in and sync are in site.mjs.
 import { createSite, describeCloudKitError, CloudKitError, takeCallback } from "./site.mjs";
-import { imageURL, rankSearchResults } from "./shared/api.mjs";
-import { itemFor, listItems, MEDIA_TYPES, recordName } from "./shared/library.mjs";
+import { imageURL, rankSearchResults } from "../shared/api.mjs";
+import { itemFor, listItems, MEDIA_TYPES, recordName } from "../shared/library.mjs";
 
 const main = document.querySelector("main");
 // Inside another site's frame, stay hidden, so nobody can trick clicks.

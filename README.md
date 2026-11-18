@@ -23,7 +23,7 @@ An iPhone app with a companion website, synced through your private iCloud.
 | `Void/App/` | CloudKit sync (`CloudSync`, ported from Royal) and the app's state (`LibraryStore`). |
 | `Void/Views/` | SwiftUI screens. |
 | `Tests/` | `swift test` for `Void/Core`, and a record fixture both clients decode. |
-| `web/` | [void] on the web: plain ES modules, no build step, CloudKit Web Services directly. |
+| `web/` | The info page and privacy policy (`index.html`), and [void] on the web (`app/`, with `shared/`): plain ES modules, no build step, CloudKit Web Services directly. |
 | `worker/` | The Cloudflare Worker the app and site call: TMDB proxy, IGDB, HowLongToBeat, GG.deals. |
 | `docs/sync-schema.md` | The CloudKit record format every client must follow. |
 
@@ -52,7 +52,7 @@ cd worker && npm install && npm test
    `npm run deploy`. It replaces the Worker the old webapp used, under the same name, and
    keeps serving it.
 4. **Website:** in CloudKit Console (container `iCloud.com.tinykings.void`, Production)
-   create a web API token with sign-in callback **URL Redirect** `https://void.tinyk.ing/`
+   create a web API token with sign-in callback **URL Redirect** `https://void.tinyk.ing/app/`
    and allowed origin `void.tinyk.ing`, and put it in `web/site.mjs` (`SITE_CLOUDKIT.apiToken`).
    Point a DNS `CNAME` for `void` on `tinyk.ing` at `tinykings.github.io`, and in this
    repository's **Settings → Pages** choose *GitHub Actions* and the custom domain
@@ -60,7 +60,9 @@ cd worker && npm install && npm test
 5. **Moving over from the old webapp:** open the `void-data.json` file in your [void] Gist
    (Raw), save it, and in the app choose Settings › Import from the old [void] webapp.
 
-The privacy policy for the App Store listing is `https://void.tinyk.ing/privacy.html`.
+`https://void.tinyk.ing/` is the app's info page and privacy policy (`web/index.html`); [void] on
+the web is at `/app/`. The App Store listing's privacy policy URL is
+`https://void.tinyk.ing/privacy.html`, which forwards to it.
 
 ## Data
 
