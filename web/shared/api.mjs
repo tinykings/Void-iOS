@@ -48,7 +48,7 @@ export function createApi({ fetcher = (...args) => globalThis.fetch(...args), ba
     },
     async credits(mediaType, id) {
       const data = await get(`/api/tmdb/${mediaType}/${id}/credits`);
-      return (data.cast ?? []).filter(p => Number.isSafeInteger(p?.id) && p.name).slice(0, 20)
+      return (data.cast ?? []).filter(p => Number.isSafeInteger(p?.id) && p.name).slice(0, 10)
         .map(p => ({ id: p.id, name: p.name, character: p.character || null, profilePath: typeof p.profile_path === "string" ? p.profile_path : null }));
     },
     async season(showID, number) {

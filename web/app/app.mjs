@@ -11,6 +11,9 @@ if (window.top !== window.self) throw new Error("Void won't run inside another p
 main.hidden = false;
 
 const $ = selector => document.querySelector(selector);
+// Served from this computer (npm run dev): Apple sign-in can only come back to
+// void.tinyk.ing, so the library shows without it. Nothing syncs.
+const LOCAL_PREVIEW = ["localhost", "127.0.0.1"].includes(location.hostname);
 const notice = $("#notice");
 function showNotice(text) { notice.textContent = text ?? ""; notice.hidden = !text; }
 
@@ -106,7 +109,7 @@ function render() {
   if (!current) return;
   const signedIn = current.signedIn;
   const synced = current.sync?.enabled;
-  const firstVisit = !(synced || signedIn);
+  const firstVisit = !(synced || signedIn || LOCAL_PREVIEW);
   $("#account").textContent = signedIn ? "Sign out" : "Sign in again";
   $("#account").classList.toggle("secondary", signedIn);
   $("#account").hidden = firstVisit;
@@ -145,7 +148,7 @@ function render() {
   grid.replaceChildren(...cards);
 
   const status = $("#sync-status");
-  if (!synced) status.textContent = "";
+  if (!synced) status.textContent = LOCAL_PREVIEW ? "Local preview: not signed in, so changes stay in this browser and nothing syncs." : "";
   else {
     const last = current.sync.lastSync ? `Last synced ${new Date(current.sync.lastSync).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}` : "Not synced yet";
     const pending = current.sync.pending ? `, ${current.sync.pending} change${current.sync.pending === 1 ? "" : "s"} pending` : "";
@@ -252,7 +255,7 @@ function renderTrailers(videos) {
 
 function renderCast(cast) {
   if (!cast?.length) return;
-  const row = element("div", "row");
+  const row = element("div", "cast");
   for (const person of cast) {
     const tile = element("div", "person");
     tile.append(poster(person.profilePath, "w185"), element("span", "caption", person.name));
