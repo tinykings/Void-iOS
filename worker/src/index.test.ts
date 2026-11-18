@@ -58,14 +58,16 @@ test('tmdbProxyPath forwards only known endpoints and parameters', async () => {
 
 test('blendTrending rewards games that rank well across several signals', async () => {
   const { blendTrending } = await import('./index');
-  const scores = blendTrending([
+  const signals = [
     { name: 'visits', result: [{ game_id: 1 }, { game_id: 2 }, { game_id: 3 }] },
-    { name: 'want_to_play', result: [{ game_id: 2 }, { game_id: 4 }, { game_id: 2 }] },
+    { name: 'want_to_play', result: [{ game_id: 2 }, { game_id: 4 }, { game_id: 2 }, { game_id: 1 }] },
     { name: 'top_sellers', result: [{ game_id: 3 }, { game_id: -1 }, {}] },
     { name: 'empty' },
-  ]);
-  assert.deepEqual(scores.map(([id]) => id), [2, 3, 1, 4]);
-  assert.deepEqual(blendTrending([{ name: 'visits', result: [{ game_id: 5 }, { game_id: 6 }] }], 1).map(([id]) => id), [5]);
+  ];
+  // 1 and 3 tie (lower ID first); 4 is in only one signal, so it's left out.
+  assert.deepEqual(blendTrending(signals).map(([id]) => id), [2, 1, 3]);
+  assert.deepEqual(blendTrending(signals, 20, 1).map(([id]) => id), [2, 1, 3, 4]);
+  assert.deepEqual(blendTrending(signals, 1).map(([id]) => id), [2]);
 });
 
 test('rankTrending favors recent games and drops editions and duplicates', async () => {

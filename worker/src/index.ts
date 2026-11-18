@@ -134,7 +134,7 @@ const SEARCH_CACHE_SECONDS = 60 * 60;
 const DETAILS_CACHE_SECONDS = 60 * 60 * 24;
 const PRICE_CACHE_SECONDS = 60 * 60;
 const TRENDING_CACHE_SECONDS = 60 * 60 * 6;
-const CACHE_VERSION = 'gg-prices-v2-game-media-trending-3';
+const CACHE_VERSION = 'gg-prices-v2-game-media-trending-4';
 const MAX_URL_LENGTH = 2048;
 const MAX_SEARCH_QUERY_LENGTH = 100;
 const MAX_PRICE_IDS = 50;
@@ -798,15 +798,20 @@ export const TRENDING_SIGNALS: { name: string; type: number }[] = [
   { name: 'want_to_play', type: 2 }, // IGDB "Want to Play" lists
   { name: 'top_sellers', type: 9 },  // Steam global top sellers
 ];
-const TRENDING_PER_SIGNAL = 50;
+// Deep enough that the signals overlap: a game must be in two of them to count.
+const TRENDING_PER_SIGNAL = 150;
+const TRENDING_MIN_SIGNALS = 2;
 const TRENDING_LIMIT = 20;
 const TRENDING_RRF_K = 20;
 const YEAR_SECONDS = 365 * 24 * 60 * 60;
 
 type IgdbMultiqueryResult = { name: string; result?: { game_id?: number; value?: number }[] }[];
 
-export const blendTrending = (results: IgdbMultiqueryResult, limit = TRENDING_LIMIT): [number, number][] => {
+// Only games in at least `minSignals` of the signals count, so a one-day spike in
+// visits or a cheap game that briefly sells well on Steam doesn't make the list.
+export const blendTrending = (results: IgdbMultiqueryResult, limit = TRENDING_LIMIT, minSignals = TRENDING_MIN_SIGNALS): [number, number][] => {
   const scores = new Map<number, number>();
+  const counts = new Map<number, number>();
   for (const signal of results) {
     const seen = new Set<number>();
     for (const entry of signal.result || []) {
@@ -814,9 +819,12 @@ export const blendTrending = (results: IgdbMultiqueryResult, limit = TRENDING_LI
       if (!Number.isSafeInteger(id) || !id || id <= 0 || seen.has(id)) continue;
       seen.add(id);
       scores.set(id, (scores.get(id) || 0) + 1 / (TRENDING_RRF_K + seen.size));
+      counts.set(id, (counts.get(id) || 0) + 1);
     }
   }
-  return [...scores.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, limit);
+  return [...scores.entries()]
+    .filter(([id]) => (counts.get(id) || 0) >= minSignals)
+    .sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, limit);
 };
 
 // Games out for more than a year count for less the older they are: half at two
