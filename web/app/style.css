@@ -2,6 +2,7 @@
 :root {
   --bg: #0F1115; --surface: #1A1D23; --fg: #F8FAFC; --cyan: #22D3EE; --silver: #94A3B8;
   --border: rgba(255, 255, 255, 0.1);
+  --cyan-hover: #67E8F9; --surface-hover: #242830; --border-hover: rgba(255, 255, 255, 0.25);
   --mono: ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, monospace;
   color-scheme: dark;
 }
@@ -79,4 +80,25 @@ button.link { background: none; color: var(--cyan); padding: 2px 0; font-size: 1
 @media (max-width: 480px) { .details-head { grid-template-columns: 100px minmax(0, 1fr); } }
 footer { margin-top: 32px; border-top: 1px solid var(--border); padding-top: 10px; }
 .noscript { padding: 20px; }
-@media (prefers-reduced-motion: no-preference) { .card .poster { transition: transform 0.15s ease-out; } .card:hover .poster { transform: translateY(-2px); } }
+/* Hover only where there's a mouse, so a tap on a phone doesn't leave a button lit.
+   Colour changes, so it still shows with reduced motion; the lift is extra. */
+@media (hover: hover) {
+  button { transition: background-color 0.12s, border-color 0.12s, color 0.12s; }
+  button:hover:where(:not(:disabled)),
+  .tabs button[aria-pressed="true"]:hover, .chip[aria-pressed="true"]:hover, .actions button.on:hover { background: var(--cyan-hover); }
+  button.secondary:not(:disabled):hover,
+  .tabs button[aria-pressed="false"]:hover, .chip[aria-pressed="false"]:hover { background: var(--surface-hover); border-color: var(--border-hover); color: var(--fg); }
+  .card:hover, .close:hover, button.link:hover { background: none; }
+  .close:hover { color: var(--fg); }
+  button.link:hover { text-decoration: underline; }
+  .thumb:hover { background: var(--bg); }
+  .thumb:hover .play { background: rgba(0, 0, 0, 0.8); }
+  .card .poster { transition: border-color 0.12s; }
+  .card:hover .poster { border-color: var(--cyan); }
+  .season { transition: border-color 0.12s; }
+  .season:hover { border-color: var(--border-hover); }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .card .poster { transition: border-color 0.12s, transform 0.15s ease-out; }
+  .card:hover .poster { transform: translateY(-2px); }
+}
