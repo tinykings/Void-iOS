@@ -227,7 +227,7 @@ function section(title) {
 
 function renderTrailers(videos) {
   if (!videos?.length) return;
-  const row = element("div", "row");
+  const row = element("div", "trailers");
   for (const video of videos) {
     const tile = element("div", "trailer");
     const thumb = () => {
