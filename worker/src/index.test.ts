@@ -49,3 +49,15 @@ test('tmdbProxyPath forwards only known endpoints and parameters', async () => {
   assert.deepEqual(tmdbProxyPath('/api/tmdb/search/multi', params('query=%20')), { error: 'Search query is required' });
   assert.deepEqual(tmdbProxyPath('/api/tmdb/tv/1/../../account', params('')), { error: 'Unsupported TMDB endpoint' });
 });
+
+test('blendTrending rewards games that rank well across several signals', async () => {
+  const { blendTrending } = await import('./index');
+  const ids = blendTrending([
+    { name: 'visits', result: [{ game_id: 1 }, { game_id: 2 }, { game_id: 3 }] },
+    { name: 'playing', result: [{ game_id: 2 }, { game_id: 4 }, { game_id: 2 }] },
+    { name: 'steam_peak', result: [{ game_id: 3 }, { game_id: -1 }, {}] },
+    { name: 'twitch_watched' },
+  ]);
+  assert.deepEqual(ids, [2, 3, 1, 4]);
+  assert.deepEqual(blendTrending([{ name: 'visits', result: [{ game_id: 5 }, { game_id: 6 }] }], 1), [5]);
+});

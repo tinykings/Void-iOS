@@ -71,12 +71,13 @@ let typeFilter = null;
 let favoritesOnly = false;
 let query = "";
 let results = [];
-// Popular: TMDB's trending movies and shows this week, as on the iOS Search screen.
-let popular = null;       // null until loaded
-let popularError = null;
-let loadingPopular = false;
-// Search results and Popular show titles that may not be in the library.
-const browsing = () => Boolean(query) || tab === "popular";
+// Trending: TMDB's trending movies and shows this week, and the Worker's trending games
+// (IGDB popularity signals), interleaved.
+let trending = null;       // null until loaded
+let trendingError = null;
+let loadingTrending = false;
+// Search results and Trending show titles that may not be in the library.
+const browsing = () => Boolean(query) || tab === "trending";
 
 const mediaOf = item => ({ source: item.source, mediaType: item.mediaType, id: item.mediaID, title: item.title, posterPath: item.image, releaseDate: item.releaseDate });
 
@@ -156,11 +157,12 @@ function render() {
     const shown = results.filter(media => !typeFilter || media.mediaType === typeFilter);
     cards = shown.map(media => card(media, state ? itemFor(state, media) : null, null));
     $("#status").textContent = searching ? "Searching…" : shown.length ? `${shown.length} results` : `Nothing found for “${query}”.`;
-  } else if (tab === "popular") {
-    const shown = (popular ?? []).filter(media => !typeFilter || media.mediaType === typeFilter);
+  } else if (tab === "trending") {
+    const shown = (trending ?? []).filter(media => !typeFilter || media.mediaType === typeFilter);
     cards = shown.map(media => card(media, state ? itemFor(state, media) : null, null));
-    $("#status").textContent = popular === null ? (popularError ?? "Loading popular movies and shows…")
-      : shown.length ? `Popular this week: ${shown.length}` : typeFilter === "game" ? "Popular is movies and shows only." : "Nothing popular to show.";
+    $("#status").textContent = trending === null ? (trendingError ?? "Loading what's trending…")
+      : shown.length ? `Trending this week: ${shown.length}${trendingError ? `. ${trendingError}` : ""}`
+      : trendingError ?? "Nothing trending to show.";
   } else {
     const entries = state ? listItems(state, tab, { type: typeFilter, favoritesOnly: tab === "history" && favoritesOnly, details: name => details[name] }) : [];
     cards = entries.map(({ name, item }) => card(mediaOf(item), item, name));
@@ -408,22 +410,34 @@ for (const button of document.querySelectorAll("[data-tab]")) {
     favoritesOnly = false;
     query = ""; $("#search").value = ""; results = [];
     render();
-    if (tab === "popular") loadPopular();
+    if (tab === "trending") loadTrending();
   });
 }
 
-async function loadPopular() {
-  if (popular !== null || loadingPopular) return;
-  loadingPopular = true;
-  popularError = null;
-  try {
-    popular = await site.api.trending();
-  } catch (error) {
-    popularError = `Couldn't load popular titles. ${error?.message ?? ""} Press Popular to try again.`.trim();
-  } finally {
-    loadingPopular = false;
-    render();
+// One game after every two movies or shows, then whatever's left of either.
+function interleave(titles, games) {
+  const mixed = [];
+  let t = 0, g = 0;
+  while (t < titles.length || g < games.length) {
+    for (let i = 0; i < 2 && t < titles.length; i++) mixed.push(titles[t++]);
+    if (g < games.length) mixed.push(games[g++]);
   }
+  return mixed;
+}
+
+async function loadTrending() {
+  if ((trending !== null && !trendingError) || loadingTrending) return;
+  loadingTrending = true;
+  trendingError = null;
+  const [titles, games] = await Promise.allSettled([site.api.trending(), site.api.trendingGames()]);
+  const failed = [titles.status === "rejected" && "movies and shows", games.status === "rejected" && "games"].filter(Boolean);
+  if (failed.length) {
+    const reason = (titles.reason ?? games.reason)?.message ?? "";
+    trendingError = `Couldn't load trending ${failed.join(" or ")}. ${reason} Press Trending to try again.`.replace(/\s+/g, " ").trim();
+  }
+  trending = failed.length === 2 ? null : interleave(titles.value ?? [], games.value ?? []);
+  loadingTrending = false;
+  render();
 }
 
 // --- Import (TEMPORARY; see legacy-import.mjs)

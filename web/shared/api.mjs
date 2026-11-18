@@ -34,6 +34,10 @@ export function createApi({ fetcher = (...args) => globalThis.fetch(...args), ba
       const data = await get("/api/tmdb/trending/all/week");
       return (data.results ?? []).map(raw => fromTMDB(raw)).filter(Boolean);
     },
+    async trendingGames() {
+      const data = await get("/api/games/trending");
+      return (Array.isArray(data) ? data : []).map(fromGame).filter(Boolean);
+    },
     async searchGames(query) {
       const data = await get("/api/games/search", { q: query });
       return (Array.isArray(data) ? data : []).map(fromGame).filter(Boolean);

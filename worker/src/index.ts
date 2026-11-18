@@ -35,6 +35,7 @@ type IgdbExternalGame = {
 
 type IgdbGame = {
   id: number;
+  version_parent?: number;
   name?: string;
   slug?: string;
   summary?: string;
@@ -128,6 +129,7 @@ const TMDB_CACHE_SECONDS = 60 * 60;
 const SEARCH_CACHE_SECONDS = 60 * 60;
 const DETAILS_CACHE_SECONDS = 60 * 60 * 24;
 const PRICE_CACHE_SECONDS = 60 * 60;
+const TRENDING_CACHE_SECONDS = 60 * 60 * 6;
 const CACHE_VERSION = 'gg-prices-v2-game-media';
 const MAX_URL_LENGTH = 2048;
 const MAX_SEARCH_QUERY_LENGTH = 100;
@@ -711,9 +713,9 @@ const getAccessToken = async (env: Env) => {
   return tokenCache.value;
 };
 
-const fetchIgdb = async (env: Env, body: string, retry = true): Promise<IgdbGame[]> => {
+const fetchIgdb = async <T = IgdbGame[]>(env: Env, body: string, endpoint = 'games', retry = true): Promise<T> => {
   const token = await getAccessToken(env);
-  const response = await fetch(`${IGDB_BASE_URL}/games`, {
+  const response = await fetch(`${IGDB_BASE_URL}/${endpoint}`, {
     method: 'POST',
     headers: {
       'Accept': 'application/json',
@@ -725,7 +727,7 @@ const fetchIgdb = async (env: Env, body: string, retry = true): Promise<IgdbGame
 
   if (response.status === 401 && retry) {
     tokenCache = null;
-    return fetchIgdb(env, body, false);
+    return fetchIgdb<T>(env, body, endpoint, false);
   }
 
   if (!response.ok) {
@@ -778,6 +780,55 @@ const getGameDetails = async (env: Env, id: number) => {
 
   const hltbCompletion = await fetchHowLongToBeat(game);
   return normalizeGame(game, hltbCompletion, true);
+};
+
+// Trending games: IGDB's popularity primitives, several signals blended so no one
+// platform or audience dominates. Each signal's top games are ranked, and a game's
+// score is the sum of 1 / (k + rank) over the signals it appears in (reciprocal rank
+// fusion), since the raw values aren't on comparable scales.
+// IDs from IGDB's /popularity_types.
+export const TRENDING_SIGNALS: { name: string; type: number }[] = [
+  { name: 'visits', type: 1 },          // IGDB page visits
+  { name: 'playing', type: 3 },         // IGDB "Playing" lists
+  { name: 'steam_peak', type: 5 },      // Steam 24-hour peak players
+  { name: 'twitch_watched', type: 34 }, // Twitch hours watched, 24 hours
+];
+const TRENDING_PER_SIGNAL = 50;
+const TRENDING_LIMIT = 20;
+const TRENDING_RRF_K = 20;
+
+type IgdbMultiqueryResult = { name: string; result?: { game_id?: number; value?: number }[] }[];
+
+export const blendTrending = (results: IgdbMultiqueryResult, limit = TRENDING_LIMIT): number[] => {
+  const scores = new Map<number, number>();
+  for (const signal of results) {
+    const seen = new Set<number>();
+    for (const entry of signal.result || []) {
+      const id = entry.game_id;
+      if (!Number.isSafeInteger(id) || !id || id <= 0 || seen.has(id)) continue;
+      seen.add(id);
+      scores.set(id, (scores.get(id) || 0) + 1 / (TRENDING_RRF_K + seen.size));
+    }
+  }
+  return [...scores.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, limit).map(([id]) => id);
+};
+
+const getTrendingGames = async (env: Env) => {
+  const body = TRENDING_SIGNALS.map(({ name, type }) =>
+    `query popularity_primitives "${name}" { fields game_id,value; where popularity_type = ${type}; sort value desc; limit ${TRENDING_PER_SIGNAL}; };`,
+  ).join('\n');
+  const signals = await fetchIgdb<IgdbMultiqueryResult>(env, body, 'multiquery');
+  // Fetch extra so editions and bundles can be dropped without leaving the list short.
+  const ids = blendTrending(signals, TRENDING_LIMIT * 2);
+  if (ids.length === 0) return [];
+  const games = await fetchIgdb(env, [
+    `fields ${gameFields},version_parent;`,
+    `where id = (${ids.join(',')});`,
+    `limit ${ids.length};`,
+  ].join(' '));
+  const byId = new Map(games.filter((game) => !game.version_parent).map((game) => [game.id, game]));
+  return ids.map((id) => byId.get(id)).filter((game): game is IgdbGame => !!game)
+    .slice(0, TRENDING_LIMIT).map((game) => normalizeGame(game));
 };
 
 const withCache = async (
@@ -883,6 +934,8 @@ const worker = {
       ? 'tmdb'
       : url.pathname === '/api/games/search'
       ? 'search'
+      : url.pathname === '/api/games/trending'
+      ? 'trending'
       : url.pathname.startsWith('/api/games/')
         ? 'details'
         : (url.pathname === '/api/prices/steam' || url.pathname.startsWith('/api/prices/steam/'))
@@ -920,6 +973,15 @@ const worker = {
         return withCache(request, env, ctx, SEARCH_CACHE_SECONDS, async () => {
           const results = await searchGames(env, query);
           return jsonResponse(request, env, results);
+        });
+      }
+
+      if (url.pathname === '/api/games/trending') {
+        if ([...url.searchParams.keys()].length > 0) {
+          return errorResponse(request, env, 400, 'Query parameters are not supported for trending games');
+        }
+        return withCache(request, env, ctx, TRENDING_CACHE_SECONDS, async () => {
+          return jsonResponse(request, env, await getTrendingGames(env));
         });
       }
 
