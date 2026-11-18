@@ -210,11 +210,11 @@ function renderDetails() {
   }
 }
 
-// Trailers, seasons and cast sit below, in #details-extra. renderDetails rebuilds the top
+// Seasons, trailers and cast sit below the streaming line, in #details-extra. renderDetails rebuilds the top
 // on every sync, so they're built once per opening and a playing trailer keeps playing.
 // Each has its own slot, in this order, since cast can load before or after the rest.
 const extra = $("#details-extra");
-const SLOTS = ["Trailers", "Seasons", "Cast"];
+const SLOTS = ["Seasons", "Trailers", "Cast"];
 function resetExtra() {
   extra.replaceChildren(...SLOTS.map(() => element("div")));
 }
