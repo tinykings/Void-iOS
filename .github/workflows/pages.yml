@@ -34,7 +34,7 @@ jobs:
       - name: Build
         run: |
           mkdir -p _site
-          cp -R web/index.html web/privacy.html web/home.css web/icon.png web/app-icon.png web/app web/shared _site/
+          cp -R web/index.html web/privacy.html web/home.css web/icon.png web/app-icon.png web/apple-touch-icon.png web/app web/shared _site/
           echo void.tinyk.ing > _site/CNAME
           touch _site/.nojekyll
           find _site -type f | sort
