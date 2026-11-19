@@ -12,6 +12,7 @@ struct DetailsView: View {
     @State private var contentRating: String?
     @State private var price: GamePrice?
     @State private var failed = false
+    @State private var loading = false
     @State private var playing: Video?
 
     private var shown: Media { media ?? store.cachedMedia(seed.key) ?? seed }
@@ -23,7 +24,16 @@ struct DetailsView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 actions
-                if failed && media == nil {
+                if loading && media == nil {
+                    // Until the details arrive, only what the list or search knew is shown.
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Loading details…").font(.footnote).foregroundStyle(Color.voidSilver)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                }
+                if failed && media == nil && !loading {
                     // No pull-to-refresh: pulling down drags the details card away.
                     HStack {
                         Text("Couldn't load all the details.").font(.footnote).foregroundStyle(Color.voidSilver)
@@ -60,6 +70,8 @@ struct DetailsView: View {
     @MainActor private func load() async {
         let key = seed.key
         let api = store.api
+        loading = true
+        defer { loading = false }
         do {
             let loaded = try await api.details(for: key)
             media = loaded
