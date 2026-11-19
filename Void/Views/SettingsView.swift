@@ -23,7 +23,7 @@ struct SettingsView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                                 .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.voidBorder))
                                 .accessibilityHidden(true)
-                            Label("[void] on the web", systemImage: "arrow.up.right").font(.subheadline.weight(.semibold))
+                            Text("[void] on the web").font(.subheadline.weight(.semibold))
                             Text("void.tinyk.ing/app").font(.caption).foregroundStyle(Color.voidSilver)
                         }
                         .frame(maxWidth: .infinity)

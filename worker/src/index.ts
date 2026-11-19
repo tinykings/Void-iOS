@@ -124,7 +124,7 @@ const IGDB_BASE_URL = 'https://api.igdb.com/v4';
 const TWITCH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
 const HLTB_BASE_URL = 'https://howlongtobeat.com';
 const HLTB_GAME_URL = `${HLTB_BASE_URL}/game`;
-const HLTB_FALLBACK_SEARCH_PATH = '/api/s';
+const HLTB_FALLBACK_SEARCH_PATH = '/api/search/site';
 const HLTB_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const DEFAULT_ALLOWED_ORIGINS = ['https://tinykings.github.io', 'https://void.tinyk.ing', 'http://localhost:3000', 'http://127.0.0.1:3000'];
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
@@ -135,7 +135,7 @@ const PRICE_CACHE_SECONDS = 60 * 60;
 const PRICE_MISS_CACHE_SECONDS = 60 * 10;
 const PRICE_RECORD_CACHE_VERSION = 'gg-price-record-1';
 const TRENDING_CACHE_SECONDS = 60 * 60 * 6;
-const CACHE_VERSION = 'gg-prices-v2-game-media-trending-4';
+const CACHE_VERSION = 'gg-prices-v2-game-media-trending-5-hltb-site-search';
 const MAX_URL_LENGTH = 2048;
 const MAX_SEARCH_QUERY_LENGTH = 100;
 const MAX_PRICE_IDS = 50;
@@ -658,12 +658,15 @@ const getHltbScriptSources = (html: string, parseAllScripts: boolean) => {
   return parseAllScripts ? scripts : scripts.filter((src) => src.includes('_app-'));
 };
 
-const extractHltbSearchPath = (scriptContent: string) => {
-  const match = scriptContent.match(/fetch\s*\(\s*["']\/api\/([a-zA-Z0-9_/]+)[^"']*["']\s*,\s*{[^}]*method:\s*["']POST["'][^}]*}/is);
-  if (!match?.[1]) return null;
+// The site fetches a search token from `<search path>/init?t=…` and then POSTs the
+// search to `<search path>` (in November 2026, `/api/search/site`). The path has
+// changed before and can have more than one segment, so keep all of it.
+export const extractHltbSearchPath = (scriptContent: string) => {
+  const init = scriptContent.match(/["'`](\/api\/[a-zA-Z0-9_/]+?)\/init\?t=/);
+  if (init?.[1]) return init[1];
 
-  const [basePath] = match[1].split('/');
-  return basePath ? `/api/${basePath}` : null;
+  const post = scriptContent.match(/fetch\s*\(\s*["'`](\/api\/[a-zA-Z0-9_/]+)["'`]\s*,\s*{[^}]*method:\s*["']POST["'][^}]*["']x-auth-token["']/is);
+  return post?.[1] || null;
 };
 
 const discoverHltbSearchPath = async (parseAllScripts: boolean) => {
@@ -743,9 +746,8 @@ const fetchHowLongToBeat = async (game: IgdbGame): Promise<HltbCompletion | null
             perspective: '',
             flow: '',
             genre: '',
-            difficulty: '',
           },
-          rangeYear: { min: '', max: '' },
+          year: '',
           modifier: 'hide_dlc',
         },
         users: { sortCategory: 'postcount' },

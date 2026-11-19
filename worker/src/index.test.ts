@@ -90,3 +90,15 @@ test('rankTrending favors recent games and drops editions and duplicates', async
   const scores: [number, number][] = [[2, 0.2], [1, 0.1], [4, 0.09], [5, 0.08], [3, 0.05], [6, 0.01], [7, 1], [8, 1]];
   assert.deepEqual(rankTrending(games, scores, now).map((game) => game.id), [3, 1]);
 });
+
+test('extractHltbSearchPath finds the full multi-segment search path', async () => {
+  const { extractHltbSearchPath } = await import('./index');
+  // Excerpts from howlongtobeat.com's scripts, November 2026.
+  const init = 'er=async()=>{try{let e=await fetch(`/api/search/site/init?t=${Date.now()}`);if(e.ok){let t=await e.json()';
+  const search = 'r=await fetch("/api/search/site",{method:"POST",headers:{"Content-Type":"application/json","x-auth-token":t},body:JSON.stringify(a)})';
+  const other = 'fetch("/api/error",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:e})})';
+  assert.equal(extractHltbSearchPath(other + init + search), '/api/search/site');
+  assert.equal(extractHltbSearchPath(other + search), '/api/search/site');
+  assert.equal(extractHltbSearchPath(other), null);
+  assert.equal(extractHltbSearchPath("fetch('/api/s/init?t=1')"), '/api/s');
+});
