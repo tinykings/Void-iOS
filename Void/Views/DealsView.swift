@@ -1,6 +1,7 @@
 import SwiftUI
 
 // Current prices for the games on your Playlist that you haven't bought, cheapest first.
+// Steam games only: GG.deals prices are looked up by Steam App ID.
 struct DealsView: View {
     @EnvironmentObject private var store: LibraryStore
     @State private var prices: [Int: GamePrice] = [:]
@@ -74,7 +75,7 @@ struct DealsView: View {
                 }
             }
             if !unpriced.isEmpty && !loading {
-                Section("No price") {
+                Section("Not on Steam or no price") {
                     ForEach(unpriced, id: \.media.key) { game in
                         MediaLink(media: game.media) { Text(game.media.title) }
                             .listRowBackground(Color.voidSurface)
@@ -84,7 +85,7 @@ struct DealsView: View {
             if loading { ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear) }
             if let message { Text(message).font(.footnote).foregroundStyle(Color.voidSilver).listRowBackground(Color.clear) }
             Section {
-                Text("Prices in USD from GG.deals. Swipe a game to open its deals.")
+                Text("Steam games only. Prices in USD from GG.deals. Swipe a game to open its deals.")
                     .font(.caption2).foregroundStyle(Color.voidSilver).listRowBackground(Color.clear)
             }
         }

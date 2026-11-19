@@ -54,7 +54,7 @@ struct DetailsView: View {
                 castRow
                 if shown.mediaType == .tv && !shown.seasons.isEmpty { seasons }
                 screenshots
-                Text(isGame ? "Game data from IGDB and HowLongToBeat; prices from GG.deals." : "Data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming data from JustWatch.")
+                Text(isGame ? "Game data from IGDB and HowLongToBeat; Steam game prices from GG.deals." : "Data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming data from JustWatch.")
                     .font(.caption2).foregroundStyle(Color.voidSilver.opacity(0.7))
             }
             .padding(16)

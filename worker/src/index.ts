@@ -139,7 +139,6 @@ const CACHE_VERSION = 'gg-prices-v2-game-media-trending-5-hltb-site-search';
 const MAX_URL_LENGTH = 2048;
 const MAX_SEARCH_QUERY_LENGTH = 100;
 const MAX_PRICE_IDS = 50;
-const MAX_SLUG_LENGTH = 100;
 const RATE_LIMIT_RETRY_SECONDS = 60;
 const STEAM_EXTERNAL_GAME_CATEGORY = 1;
 const GG_DEALS_REGIONS = new Set([
@@ -291,8 +290,9 @@ const normalizeGgDealsUrl = (value: unknown) => {
   }
 };
 
-// The aggregate quote GG.deals returns for any lookup kind. It has no shop,
-// platform, DRM or edition, so none is inferred here.
+// The aggregate quote GG.deals returns for a Steam App ID. It has no shop,
+// platform, DRM or edition, so none is inferred here. Prices are for Steam games
+// only: GG.deals' API has no platform data, so console games can't be priced.
 export const normalizeGgDealsAggregate = (game: GgDealsGamePrices | null | undefined) => {
   if (!game || typeof game.title !== 'string') return null;
   const url = normalizeGgDealsUrl(game.url);
@@ -328,15 +328,6 @@ export const normalizeGgDealsGamePrice = (steamAppId: number, game: GgDealsGameP
   return aggregate && { steamAppId, ...aggregate };
 };
 
-export const normalizeGgDealsSlugPrice = (slug: string, game: GgDealsGamePrices | null | undefined) => {
-  const aggregate = normalizeGgDealsAggregate(game);
-  return aggregate && { slug, ...aggregate };
-};
-
-// Lowercase ASCII words joined by single hyphens, as in gg.deals/game/<slug>/.
-export const isValidGgDealsSlug = (value: string) =>
-  value.length <= MAX_SLUG_LENGTH && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
-
 const getGgDealsRetryAfter = (response: Response) => {
   const header = response.headers.get('x-ratelimit-reset');
   const reset = header ? Number(header) : NaN;
@@ -348,11 +339,10 @@ const getGgDealsRetryAfter = (response: Response) => {
   return response.headers.get('Retry-After') || String(RATE_LIMIT_RETRY_SECONDS);
 };
 
-type GgDealsLookupKind = 'steam-app' | 'slug';
+type GgDealsLookupKind = 'steam-app';
 
 const GG_DEALS_LOOKUPS: Record<GgDealsLookupKind, { url: string; param: string }> = {
   'steam-app': { url: 'https://api.gg.deals/v1/prices/by-steam-app-id/', param: 'ids' },
-  slug: { url: 'https://api.gg.deals/v1/prices/by-slug/', param: 'slugs' },
 };
 
 // Upstream entries (only the fields we use) are what's cached, and they're
@@ -1161,8 +1151,7 @@ const worker = {
       ? 'trending'
       : url.pathname.startsWith('/api/games/')
         ? 'details'
-        : (url.pathname === '/api/prices/steam' || url.pathname.startsWith('/api/prices/steam/')
-          || url.pathname === '/api/prices/slug')
+        : (url.pathname === '/api/prices/steam' || url.pathname.startsWith('/api/prices/steam/'))
           ? 'prices'
           : 'other';
 
@@ -1243,31 +1232,6 @@ const worker = {
           .map((steamAppId) => normalizeGgDealsGamePrice(steamAppId, records.get(String(steamAppId))))
           .filter((price) => price !== null);
         return priceResponse(request, env, ids, records, prices);
-      }
-
-      if (url.pathname === '/api/prices/slug') {
-        const keys = [...url.searchParams.keys()];
-        if (keys.some((key) => key !== 'slugs' && key !== 'region') || keys.length !== new Set(keys).size) {
-          return errorResponse(request, env, 400, 'Unsupported query parameter');
-        }
-
-        const rawSlugs = url.searchParams.get('slugs') || '';
-        const slugParts = rawSlugs.split(',');
-        if (!rawSlugs || !slugParts.every(isValidGgDealsSlug)) {
-          return errorResponse(request, env, 400, 'Invalid GG.deals slugs');
-        }
-        const slugs = [...new Set(slugParts)];
-        if (slugs.length > MAX_PRICE_IDS) {
-          return errorResponse(request, env, 400, `Provide between 1 and ${MAX_PRICE_IDS} GG.deals slugs`);
-        }
-        const region = parsePriceRegion(url);
-        if (!region) return errorResponse(request, env, 400, 'Unsupported GG.deals region');
-
-        const records = await getGgDealsRecords(request, env, ctx, 'slug', slugs, region);
-        const prices = slugs
-          .map((slug) => normalizeGgDealsSlugPrice(slug, records.get(slug)))
-          .filter((price) => price !== null);
-        return priceResponse(request, env, slugs, records, prices);
       }
 
       const priceMatch = url.pathname.match(/^\/api\/prices\/steam\/(\d+)$/);

@@ -3,7 +3,8 @@ import Foundation
 import FoundationNetworking
 #endif
 
-// GG.deals prices, by Steam App ID. With the user's own GG.deals API key the app asks
+// GG.deals prices, by Steam App ID: Steam games only, since GG.deals' API has no
+// platform data to price console games with. With the user's own GG.deals API key the app asks
 // GG.deals directly and spends only that key's allowance; without one it goes through
 // the Worker, whose key is shared by everyone and can run out at busy times.
 struct GamePrices: Sendable {

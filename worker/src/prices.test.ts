@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
-import worker, { isValidGgDealsSlug, normalizeGgDealsAggregate, normalizeGgDealsSlugPrice } from './index';
+import worker, { normalizeGgDealsAggregate } from './index';
 
 const game = (title: string, retail: string | null = '9.99', keyshop: string | null = '4.20') => ({
   title,
@@ -54,15 +54,7 @@ const call = async (path: string, headers: Record<string, string> = {}) => {
   return response;
 };
 
-const requestedIds = (url: URL) => (url.searchParams.get('ids') ?? url.searchParams.get('slugs'))!.split(',');
-
-test('isValidGgDealsSlug accepts only lowercase hyphenated ASCII', () => {
-  assert.ok(isValidGgDealsSlug('portal-2'));
-  assert.ok(isValidGgDealsSlug('halo'));
-  for (const slug of ['', 'Portal-2', '-portal', 'portal-', 'portal--2', 'portal_2', 'pórtal', 'a/b', 'a'.repeat(101)]) {
-    assert.equal(isValidGgDealsSlug(slug), false, slug);
-  }
-});
+const requestedIds = (url: URL) => url.searchParams.get('ids')!.split(',');
 
 test('aggregate normalizer handles free, keyshop-only, missing and malformed prices', () => {
   assert.deepEqual(normalizeGgDealsAggregate(game('Free', '0', '1.00'))?.lowestCurrent, { amount: '0', source: 'retail' });
@@ -74,38 +66,31 @@ test('aggregate normalizer handles free, keyshop-only, missing and malformed pri
   assert.equal(normalizeGgDealsAggregate({ title: 7 } as any), null);
 });
 
-test('slug wrapper carries the slug and no Steam ID', () => {
-  const price = normalizeGgDealsSlugPrice('portal-2', game('Portal 2'));
-  assert.equal(price?.slug, 'portal-2');
-  assert.equal('steamAppId' in (price || {}), false);
-  assert.equal(normalizeGgDealsSlugPrice('nope', null), null);
-});
-
-test('slug route validates input before spending quota', async () => {
+test('steam batch route validates input before spending quota', async () => {
   for (const path of [
-    '/api/prices/slug',
-    '/api/prices/slug?slugs=',
-    '/api/prices/slug?slugs=a,,b',
-    '/api/prices/slug?slugs=Portal',
-    '/api/prices/slug?slugs=a&key=x',
-    '/api/prices/slug?slugs=a&slugs=b',
-    '/api/prices/slug?slugs=a&region=xx',
-    `/api/prices/slug?slugs=${Array.from({ length: 51 }, (_, i) => `g${i}`).join(',')}`,
+    '/api/prices/steam',
+    '/api/prices/steam?ids=',
+    '/api/prices/steam?ids=1,,2',
+    '/api/prices/steam?ids=abc',
+    '/api/prices/steam?ids=1&key=x',
+    '/api/prices/steam?ids=1&region=xx',
+    `/api/prices/steam?ids=${Array.from({ length: 51 }, (_, i) => i + 1).join(',')}`,
+    '/api/prices/slug?slugs=portal-2',
   ]) {
-    assert.equal((await call(path)).status, 400, path);
+    assert.ok([400, 404].includes((await call(path)).status), path);
   }
   assert.equal(upstreamCalls.length, 0);
 });
 
-test('slug route dedupes, keeps caller order and omits unmatched slugs', async () => {
-  upstream = () => Response.json({ success: true, data: { 'b-game': game('B Game'), 'a-game': game('A Game'), missing: null } });
-  const response = await call('/api/prices/slug?slugs=b-game,a-game,b-game,missing&region=GB', { Origin: 'http://localhost:3000' });
+test('steam batch dedupes, keeps caller order and omits unmatched IDs', async () => {
+  upstream = () => Response.json({ success: true, data: { 20: game('B Game'), 10: game('A Game'), 30: null } });
+  const response = await call('/api/prices/steam?ids=20,10,20,30&region=GB', { Origin: 'http://localhost:3000' });
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Access-Control-Allow-Origin'), 'http://localhost:3000');
-  assert.deepEqual((await response.json()).map((price: any) => price.slug), ['b-game', 'a-game']);
+  assert.deepEqual((await response.json()).map((price: any) => price.steamAppId), [20, 10]);
   assert.equal(upstreamCalls.length, 1);
-  assert.equal(upstreamCalls[0].pathname, '/v1/prices/by-slug/');
-  assert.deepEqual(requestedIds(upstreamCalls[0]), ['b-game', 'a-game', 'missing']);
+  assert.equal(upstreamCalls[0].pathname, '/v1/prices/by-steam-app-id/');
+  assert.deepEqual(requestedIds(upstreamCalls[0]), ['20', '10', '30']);
   assert.equal(upstreamCalls[0].searchParams.get('region'), 'gb');
 });
 
@@ -138,29 +123,28 @@ test('overlapping batches fetch only misses and rebuild caller order', async () 
   assert.equal(response.headers.get('Cache-Control'), 'public, max-age=3600');
 });
 
-test('regions and lookup kinds are cached separately', async () => {
+test('regions are cached separately', async () => {
   upstream = (url) => Response.json({ success: true, data: { [requestedIds(url)[0]]: game('Same') } });
   await call('/api/prices/steam/5?region=us');
   await call('/api/prices/steam/5?region=de');
-  await call('/api/prices/slug?slugs=5');
   await call('/api/prices/steam/5?region=us');
-  assert.equal(upstreamCalls.length, 3);
+  assert.equal(upstreamCalls.length, 2);
 });
 
 test('confirmed misses are cached briefly; omitted or malformed entries are not cached', async () => {
-  upstream = () => Response.json({ success: true, data: { gone: null, broken: { title: 'Broken', url: 'nope' } } });
-  const response = await call('/api/prices/slug?slugs=gone,broken,omitted');
+  upstream = () => Response.json({ success: true, data: { 1: null, 2: { title: 'Broken', url: 'nope' } } });
+  const response = await call('/api/prices/steam?ids=1,2,3');
   assert.deepEqual(await response.json(), []);
   assert.equal(response.headers.get('Cache-Control'), 'public, max-age=600');
   assert.deepEqual([...cacheStore.values()].map((entry) => entry.cacheControl), ['public, max-age=600']);
 
-  await call('/api/prices/slug?slugs=gone,broken,omitted');
-  assert.deepEqual(requestedIds(upstreamCalls[1]), ['broken', 'omitted']);
+  await call('/api/prices/steam?ids=1,2,3');
+  assert.deepEqual(requestedIds(upstreamCalls[1]), ['2', '3']);
 });
 
 test('upstream 429 passes Retry-After through and caches nothing', async () => {
   upstream = () => new Response('{}', { status: 429, headers: { 'x-ratelimit-reset': '42' } });
-  const response = await call('/api/prices/slug?slugs=a,b');
+  const response = await call('/api/prices/steam?ids=1,2');
   assert.equal(response.status, 429);
   assert.equal(response.headers.get('Retry-After'), '42');
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
@@ -170,8 +154,8 @@ test('upstream 429 passes Retry-After through and caches nothing', async () => {
   assert.equal((await call('/api/prices/steam/9')).headers.get('Retry-After'), '17');
 
   // A later success is fetched fresh, not served as a cached failure.
-  upstream = () => Response.json({ success: true, data: { a: game('A'), b: game('B') } });
-  assert.equal((await (await call('/api/prices/slug?slugs=a,b')).json()).length, 2);
+  upstream = () => Response.json({ success: true, data: { 1: game('A'), 2: game('B') } });
+  assert.equal((await (await call('/api/prices/steam?ids=1,2')).json()).length, 2);
 });
 
 test('an incomplete upstream response is a 502 and caches nothing', async () => {
@@ -186,14 +170,14 @@ test('concurrent identical misses in one isolate share a single upstream batch',
   (globalThis as any).fetch = async (input: URL) => {
     upstreamCalls.push(new URL(String(input)));
     await gate;
-    return Response.json({ success: true, data: { shared: game('Shared') } });
+    return Response.json({ success: true, data: { 77: game('Shared') } });
   };
-  const first = call('/api/prices/slug?slugs=shared');
-  const second = call('/api/prices/slug?slugs=shared');
+  const first = call('/api/prices/steam/77');
+  const second = call('/api/prices/steam?ids=77');
   await new Promise((resolve) => setTimeout(resolve, 10));
   release();
   const [a, b] = await Promise.all([first, second]);
-  assert.equal((await a.json())[0].slug, 'shared');
-  assert.equal((await b.json())[0].slug, 'shared');
+  assert.equal((await a.json()).steamAppId, 77);
+  assert.equal((await b.json())[0].steamAppId, 77);
   assert.equal(upstreamCalls.length, 1);
 });

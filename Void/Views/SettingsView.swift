@@ -112,7 +112,7 @@ struct SettingsView: View {
                 Section("About") {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
                     Link("Privacy Policy", destination: URL(string: "https://void.tinyk.ing/privacy.html")!)
-                    Text("Movie and show data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming data from JustWatch. Game data from IGDB and HowLongToBeat; prices from GG.deals.")
+                    Text("Movie and show data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming data from JustWatch. Game data from IGDB and HowLongToBeat; Steam game prices from GG.deals.")
                         .font(.footnote).foregroundStyle(Color.voidSilver)
                 }
             }
@@ -159,8 +159,8 @@ struct SettingsView: View {
             Text("GG.deals")
         } footer: {
             Text(store.ggDealsKey != nil
-                 ? "Game prices come straight from GG.deals with your key. It's kept in your iCloud Keychain."
-                 : "Optional. Without a key, prices use a key shared by everyone using [void], which can get busy. Sign in at GG.deals to get your own free key.")
+                 ? "Steam game prices come straight from GG.deals with your key. It's kept in your iCloud Keychain."
+                 : "Optional, for Steam game prices. Without a key, prices use a key shared by everyone using [void], which can get busy. Sign in at GG.deals to get your own free key.")
         }
     }
 

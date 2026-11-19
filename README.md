@@ -9,9 +9,10 @@ An iPhone app with a companion website, synced through your private iCloud.
   to the Playlist on its own, once per episode, and stays until you mark it played.
 - **Stream.** Which US subscription services carry what's on your Playlist, the services
   covering the most first, to help pick what to subscribe to.
-- **Deals.** Current prices for the Playlist games you haven't bought, cheapest first.
+- **Deals.** Current prices for the Playlist games you haven't bought, cheapest first
+  (Steam games only).
 - **Search** movies and shows (TMDB) and games (IGDB) together; details with cast,
-  seasons, trailers, streaming services, How Long to Beat and prices.
+  seasons, trailers, streaming services, How Long to Beat and Steam game prices.
 - **iCloud sync** between devices and with [void] on the web (`web/`), where you sign in
   with your Apple Account.
 
@@ -66,4 +67,4 @@ the web is at `/app/`. The App Store listing's privacy policy URL is
 
 TMDB for movies and shows (this product uses the TMDB API but is not endorsed or certified
 by TMDB), JustWatch streaming data through TMDB, IGDB and HowLongToBeat for games, GG.deals
-for prices.
+for Steam game prices.

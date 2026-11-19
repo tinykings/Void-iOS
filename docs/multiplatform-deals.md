@@ -1,6 +1,16 @@
 # Multi-platform deals investigation
 
-Status: Worker slug support implemented (first slice); iOS integration not started. Updated with official API
+> **Decision (2026-11-19): abandoned. Prices are for Steam games only.**
+> GG.deals' Prices API returns one aggregate PC quote with no platform, shop or
+> DRM data, so it can't price console games, and matching non-Steam PC games to
+> GG.deals slugs wasn't worth the risk of wrong matches. The `/api/prices/slug`
+> Worker route was added and then removed. What stayed: per-game price caching
+> in the Worker, and the optional personal GG.deals key on iOS (both Steam-only).
+> The app, website and READMEs say "Steam games only". The rest of this document
+> is the original research, kept for reference if a provider with platform-level
+> console prices turns up.
+
+Status: abandoned (see the decision above). Updated with official API
 text supplied by the user and a concrete agent handoff below.
 
 ## Findings
