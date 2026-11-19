@@ -1,6 +1,6 @@
 # Multi-platform deals investigation
 
-Status: research / proposed design, not implemented. Updated with official API
+Status: Worker slug support implemented (first slice); iOS integration not started. Updated with official API
 text supplied by the user and a concrete agent handoff below.
 
 ## Findings
@@ -151,8 +151,12 @@ slugs from titles or IGDB slugs, scrape GG.deals, or present aggregate prices as
 verified platform-specific offers. The earlier provider-independent offer model
 is a future direction, not a requirement to invent metadata this API lacks.
 
-No implementation changes have been made. The current Worker, iOS models and
-views still require Steam IDs. No verified non-Steam mapping has been collected.
+**First slice done (2026-11-19).** The Worker has `/api/prices/slug` and
+per-game record caching shared by all price routes; see `worker/README.md`
+(Prices). Global record-quota enforcement was deliberately deferred: the Worker
+relies on upstream 429 + `Retry-After`, as documented there. iOS models and views
+still require Steam IDs, and no verified non-Steam mapping has been collected,
+so the second slice hasn't started.
 
 ### First slice: Worker slug support and per-game caching
 

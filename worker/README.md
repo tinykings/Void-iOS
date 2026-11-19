@@ -1,6 +1,6 @@
 # [void] API Worker
 
-Cloudflare Worker proxy for TMDB (movies and shows, `/api/tmdb/...`), IGDB game search/details, HowLongToBeat completion data, and GG.deals Steam prices. It serves the iOS app, [void] on the web, and the old [void] webapp, so no client ships an API key.
+Cloudflare Worker proxy for TMDB (movies and shows, `/api/tmdb/...`), IGDB game search/details, HowLongToBeat completion data, and GG.deals prices (by Steam App ID or GG.deals slug). It serves the iOS app, [void] on the web, and the old [void] webapp, so no client ships an API key.
 
 Moved here from the old `tinykings/void` repository. It deploys under the same name (`void-game-api`), so the old webapp keeps working. **This is the only copy: deploy it from here.** An older copy in `tinykings/void` blocks requests without an `Origin` header and has no TMDB proxy, so deploying that one breaks the iOS app with 403s.
 
@@ -11,7 +11,7 @@ Moved here from the old `tinykings/void` repository. It deploys under the same n
 ## Security controls
 
 - **Origin allowlist:** Browser requests are accepted only from `ALLOWED_ORIGINS`. Originless requests are allowed (`ALLOW_ORIGINLESS_REQUESTS="true"`) because the iOS app sends no `Origin` header; the per-client rate limit is what bounds direct clients.
-- **Rate limiting:** Cloudflare's native rate-limit binding allows 100 requests per minute. Search/details use per-client route keys; prices share a key within each Cloudflare location because GG.deals quota belongs to one API key. Adjust the `[[ratelimits]]` block in `wrangler.toml` if production traffic requires a different limit.
+- **Rate limiting:** Cloudflare's native rate-limit binding allows 100 requests per minute. Search/details use per-client route keys; prices (Steam and slug) share a key within each Cloudflare location because GG.deals quota belongs to one API key. This counts requests, not records; see Prices below. Adjust the `[[ratelimits]]` block in `wrangler.toml` if production traffic requires a different limit.
 - **Input limits:** URLs are limited to 2,048 characters, search text to 100 characters, and unsupported query parameters are rejected.
 - **Monitoring:** Blocked origins, rate-limit events, and upstream failures emit structured JSON logs containing the event, route, origin, and Cloudflare Ray ID. Queries and credentials are never logged.
 
@@ -54,4 +54,22 @@ curl -H 'Origin: http://localhost:3000' 'http://localhost:8787/api/prices/steam/
 curl -H 'Origin: http://localhost:3000' 'http://localhost:8787/api/prices/steam?ids=620,1245620&region=us'
 ```
 
-Price endpoints accept GG.deals-supported regions and cache successful responses for one hour. Batch requests accept up to 50 unique Steam App IDs. Single requests return `null` when GG.deals has no match; batch requests omit unmatched IDs. GG.deals key remains Worker-only; never expose it through a `NEXT_PUBLIC_*` variable.
+```sh
+curl -H 'Origin: http://localhost:3000' 'http://localhost:8787/api/prices/slug?slugs=portal-2,hades&region=us'
+```
+
+## Prices
+
+| Route | Identity | No match |
+| --- | --- | --- |
+| `GET /api/prices/steam/<appId>?region=` | `steamAppId` | `null` |
+| `GET /api/prices/steam?ids=1,2&region=` | `steamAppId` | omitted |
+| `GET /api/prices/slug?slugs=a,b&region=` | `slug` | omitted |
+
+All three return the same GG.deals aggregate quote (title, GG.deals URL, currency, current/historical retail and keyshop prices, and `lowestCurrent`) with either `steamAppId` or `slug`. It's an aggregate across shops: it has no shop, platform, DRM or edition, and a Steam App ID lookup doesn't mean the price is a Steam store offer. Batches accept up to 50 unique entries, returned in the order asked. Slugs must be lowercase ASCII words joined by single hyphens, up to 100 characters. `region` defaults to `us` and must be a GG.deals region. Only use slugs taken from verified GG.deals URLs; don't guess them from titles or IGDB slugs.
+
+**Caching.** Each game is cached on its own, keyed by lookup kind, region and ID (never the API key or caller), so single and batch requests share records and a batch fetches only its misses. Matches are cached for an hour; confirmed no-matches (GG.deals returned `null`) for 10 minutes. Upstream failures, 429s, and entries GG.deals omitted or returned malformed are never cached. Responses carry `max-age=600` when any requested game has no price, `3600` otherwise. Concurrent misses for the same game share one upstream request within an isolate only.
+
+**Quota.** GG.deals allows 100 records per minute and 1,000 per hour per API key; every ID counts, even invalid ones, and a batch larger than what's left fails whole with a 429. The Worker passes a GG.deals 429 through with `Retry-After` (from `x-ratelimit-reset` when present) and never retries. The native rate limiter counts HTTP requests per Cloudflare location, not records, and caches are per location too, so **neither enforces the GG.deals quota**; upstream 429 is the real limit. Enforcing it in the Worker would need a globally coordinated record budget (for example a Durable Object with minute and hour windows); that's deliberately deferred.
+
+The GG.deals key remains Worker-only; never expose it through a `NEXT_PUBLIC_*` variable.

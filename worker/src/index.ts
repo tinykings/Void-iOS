@@ -123,7 +123,6 @@ class GgDealsApiError extends Error {
 const IGDB_BASE_URL = 'https://api.igdb.com/v4';
 const TWITCH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
 const HLTB_BASE_URL = 'https://howlongtobeat.com';
-const GG_DEALS_PRICES_URL = 'https://api.gg.deals/v1/prices/by-steam-app-id/';
 const HLTB_GAME_URL = `${HLTB_BASE_URL}/game`;
 const HLTB_FALLBACK_SEARCH_PATH = '/api/s';
 const HLTB_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
@@ -133,11 +132,14 @@ const TMDB_CACHE_SECONDS = 60 * 60;
 const SEARCH_CACHE_SECONDS = 60 * 60;
 const DETAILS_CACHE_SECONDS = 60 * 60 * 24;
 const PRICE_CACHE_SECONDS = 60 * 60;
+const PRICE_MISS_CACHE_SECONDS = 60 * 10;
+const PRICE_RECORD_CACHE_VERSION = 'gg-price-record-1';
 const TRENDING_CACHE_SECONDS = 60 * 60 * 6;
 const CACHE_VERSION = 'gg-prices-v2-game-media-trending-4';
 const MAX_URL_LENGTH = 2048;
 const MAX_SEARCH_QUERY_LENGTH = 100;
 const MAX_PRICE_IDS = 50;
+const MAX_SLUG_LENGTH = 100;
 const RATE_LIMIT_RETRY_SECONDS = 60;
 const STEAM_EXTERNAL_GAME_CATEGORY = 1;
 const GG_DEALS_REGIONS = new Set([
@@ -289,7 +291,9 @@ const normalizeGgDealsUrl = (value: unknown) => {
   }
 };
 
-export const normalizeGgDealsGamePrice = (steamAppId: number, game: GgDealsGamePrices | null | undefined) => {
+// The aggregate quote GG.deals returns for any lookup kind. It has no shop,
+// platform, DRM or edition, so none is inferred here.
+export const normalizeGgDealsAggregate = (game: GgDealsGamePrices | null | undefined) => {
   if (!game || typeof game.title !== 'string') return null;
   const url = normalizeGgDealsUrl(game.url);
   const currency = game.prices?.currency;
@@ -308,7 +312,6 @@ export const normalizeGgDealsGamePrice = (steamAppId: number, game: GgDealsGameP
       : { amount: currentKeyshops as string, source: 'keyshop' as const };
 
   return {
-    steamAppId,
     title: game.title,
     url,
     currency,
@@ -320,37 +323,176 @@ export const normalizeGgDealsGamePrice = (steamAppId: number, game: GgDealsGameP
   };
 };
 
+export const normalizeGgDealsGamePrice = (steamAppId: number, game: GgDealsGamePrices | null | undefined) => {
+  const aggregate = normalizeGgDealsAggregate(game);
+  return aggregate && { steamAppId, ...aggregate };
+};
+
+export const normalizeGgDealsSlugPrice = (slug: string, game: GgDealsGamePrices | null | undefined) => {
+  const aggregate = normalizeGgDealsAggregate(game);
+  return aggregate && { slug, ...aggregate };
+};
+
+// Lowercase ASCII words joined by single hyphens, as in gg.deals/game/<slug>/.
+export const isValidGgDealsSlug = (value: string) =>
+  value.length <= MAX_SLUG_LENGTH && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+
 const getGgDealsRetryAfter = (response: Response) => {
-  const reset = Number(response.headers.get('x-ratelimit-reset'));
-  if (Number.isFinite(reset)) {
-    return String(Math.max(1, Math.ceil(reset - Date.now() / 1000)));
+  const header = response.headers.get('x-ratelimit-reset');
+  const reset = header ? Number(header) : NaN;
+  if (Number.isFinite(reset) && reset >= 0) {
+    // Accept either a Unix timestamp or a seconds-until-reset delta.
+    const seconds = reset > 1_000_000_000 ? reset - Date.now() / 1000 : reset;
+    return String(Math.max(1, Math.ceil(seconds)));
   }
   return response.headers.get('Retry-After') || String(RATE_LIMIT_RETRY_SECONDS);
 };
 
-const fetchSteamGamePrices = async (env: Env, steamAppIds: number[], region: string) => {
+type GgDealsLookupKind = 'steam-app' | 'slug';
+
+const GG_DEALS_LOOKUPS: Record<GgDealsLookupKind, { url: string; param: string }> = {
+  'steam-app': { url: 'https://api.gg.deals/v1/prices/by-steam-app-id/', param: 'ids' },
+  slug: { url: 'https://api.gg.deals/v1/prices/by-slug/', param: 'slugs' },
+};
+
+// Upstream entries (only the fields we use) are what's cached, and they're
+// normalized again on every read. `null` is a confirmed "GG.deals has no
+// match"; an absent record is unknown (omitted or malformed) and never cached.
+type GgDealsRecord = GgDealsGamePrices | null;
+type GgDealsRecords = Map<string, GgDealsRecord>;
+
+const fetchGgDealsRecords = async (env: Env, kind: GgDealsLookupKind, ids: string[], region: string) => {
   if (!env.GG_DEALS_API_KEY) throw new Error('GG.deals API key is not configured');
 
-  const url = new URL(GG_DEALS_PRICES_URL);
-  url.searchParams.set('ids', steamAppIds.join(','));
+  const lookup = GG_DEALS_LOOKUPS[kind];
+  const url = new URL(lookup.url);
+  url.searchParams.set(lookup.param, ids.join(','));
   url.searchParams.set('key', env.GG_DEALS_API_KEY);
   url.searchParams.set('region', region);
 
+  // One attempt only: every requested ID counts against the shared quota,
+  // even on failure, so retries would spend it twice.
   const response = await fetch(url);
   if (!response.ok) {
     throw new GgDealsApiError(response.status, response.status === 429 ? getGgDealsRetryAfter(response) : undefined);
   }
 
   const data = await response.json() as GgDealsResponse;
-  if (!data.success || !data.data) throw new Error('GG.deals response was incomplete');
-  return steamAppIds
-    .map((steamAppId) => normalizeGgDealsGamePrice(steamAppId, data.data?.[String(steamAppId)]))
-    .filter((price) => price !== null);
+  if (!data.success || !data.data || typeof data.data !== 'object') throw new Error('GG.deals response was incomplete');
+
+  const records: GgDealsRecords = new Map();
+  for (const id of ids) {
+    if (!Object.hasOwn(data.data, id)) continue;
+    const entry = data.data[id];
+    if (entry === null) {
+      records.set(id, null);
+      continue;
+    }
+    if (normalizeGgDealsAggregate(entry)) {
+      const { currentRetail, currentKeyshops, historicalRetail, historicalKeyshops, currency } = entry.prices || {};
+      records.set(id, {
+        title: entry.title,
+        url: entry.url,
+        prices: { currentRetail, currentKeyshops, historicalRetail, historicalKeyshops, currency },
+      });
+    }
+  }
+  return records;
 };
 
-const fetchSteamGamePrice = async (env: Env, steamAppId: number, region: string) => {
-  const [price] = await fetchSteamGamePrices(env, [steamAppId], region);
-  return price || null;
+const priceRecordCacheKey = (request: Request, kind: GgDealsLookupKind, region: string, id: string) => {
+  // Internal key: no API key, client origin or caller query. Responses are
+  // rebuilt (with CORS) for each caller, so any origin may share a record.
+  const origin = new URL(request.url).origin;
+  return new Request(`${origin}/__cache/${PRICE_RECORD_CACHE_VERSION}/${kind}/${region}/${encodeURIComponent(id)}`);
+};
+
+const readCachedPriceRecord = async (cache: Cache, key: Request): Promise<{ record: GgDealsRecord } | undefined> => {
+  const cached = await cache.match(key);
+  if (!cached) return undefined;
+  try {
+    const body = await cached.json() as { record?: unknown };
+    if (body.record === null) return { record: null };
+    const record = body.record as GgDealsGamePrices;
+    return normalizeGgDealsAggregate(record) ? { record } : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// Upstream batches in flight in this isolate, per record key. This avoids
+// duplicate spends for concurrent misses on one isolate only; other isolates
+// and Cloudflare locations still fetch independently.
+const inFlightPriceRecords = new Map<string, Promise<{ record: GgDealsRecord } | undefined>>();
+
+export const getGgDealsRecords = async (
+  request: Request,
+  env: Env,
+  ctx: ExecutionContextLike,
+  kind: GgDealsLookupKind,
+  ids: string[],
+  region: string,
+) => {
+  const cache = (caches as CacheStorage & { default: Cache }).default;
+  const keys = new Map(ids.map((id) => [id, priceRecordCacheKey(request, kind, region, id)]));
+  const results = new Map<string, { record: GgDealsRecord } | undefined>();
+
+  await Promise.all(ids.map(async (id) => {
+    const cached = await readCachedPriceRecord(cache, keys.get(id) as Request);
+    if (cached) results.set(id, cached);
+  }));
+
+  const pending = new Map<string, Promise<{ record: GgDealsRecord } | undefined>>();
+  const toFetch: string[] = [];
+  for (const id of ids) {
+    if (results.has(id)) continue;
+    const inFlight = inFlightPriceRecords.get(keys.get(id)!.url);
+    if (inFlight) pending.set(id, inFlight);
+    else toFetch.push(id);
+  }
+
+  if (toFetch.length > 0) {
+    const batch = fetchGgDealsRecords(env, kind, toFetch, region);
+    for (const id of toFetch) {
+      const cacheUrl = keys.get(id)!.url;
+      const promise = batch
+        .then((records) => (records.has(id) ? { record: records.get(id) as GgDealsRecord } : undefined))
+        .finally(() => inFlightPriceRecords.delete(cacheUrl));
+      inFlightPriceRecords.set(cacheUrl, promise);
+      pending.set(id, promise);
+    }
+    const records = await batch.catch(() => undefined);
+    for (const [id, record] of records || []) {
+      const seconds = record === null ? PRICE_MISS_CACHE_SECONDS : PRICE_CACHE_SECONDS;
+      ctx.waitUntil(cache.put(keys.get(id) as Request, new Response(JSON.stringify({ record }), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${seconds}` },
+      })));
+    }
+  }
+
+  // Any upstream failure (including 429) rejects here, and nothing was cached.
+  const settled = await Promise.all([...pending].map(async ([id, promise]) => [id, await promise] as const));
+  for (const [id, value] of settled) results.set(id, value);
+
+  const records: GgDealsRecords = new Map();
+  for (const id of ids) {
+    const value = results.get(id);
+    if (value) records.set(id, value.record);
+  }
+  return records;
+};
+
+const parsePriceRegion = (url: URL) => {
+  const region = (url.searchParams.get('region') || 'us').toLowerCase();
+  return GG_DEALS_REGIONS.has(region) ? region : undefined;
+};
+
+const priceResponse = (request: Request, env: Env, ids: string[], records: Map<string, unknown>, data: unknown) => {
+  // A brief max-age when any answer is a negative or unknown match, so a
+  // client does not hold on to "no price" for an hour.
+  const complete = ids.every((id) => records.get(id));
+  const seconds = complete ? PRICE_CACHE_SECONDS : PRICE_MISS_CACHE_SECONDS;
+  return jsonResponse(request, env, data, { headers: { 'Cache-Control': `public, max-age=${seconds}` } });
 };
 
 const normalizeSearchText = (value: string) =>
@@ -1017,7 +1159,8 @@ const worker = {
       ? 'trending'
       : url.pathname.startsWith('/api/games/')
         ? 'details'
-        : (url.pathname === '/api/prices/steam' || url.pathname.startsWith('/api/prices/steam/'))
+        : (url.pathname === '/api/prices/steam' || url.pathname.startsWith('/api/prices/steam/')
+          || url.pathname === '/api/prices/slug')
           ? 'prices'
           : 'other';
 
@@ -1088,13 +1231,41 @@ const worker = {
         if (steamAppIds.some((id) => !id) || steamAppIds.length > MAX_PRICE_IDS) {
           return errorResponse(request, env, 400, `Provide between 1 and ${MAX_PRICE_IDS} Steam App IDs`);
         }
-        const region = (url.searchParams.get('region') || 'us').toLowerCase();
-        if (!GG_DEALS_REGIONS.has(region)) return errorResponse(request, env, 400, 'Unsupported GG.deals region');
+        const region = parsePriceRegion(url);
+        if (!region) return errorResponse(request, env, 400, 'Unsupported GG.deals region');
 
-        return withCache(request, env, ctx, PRICE_CACHE_SECONDS, async () => {
-          const prices = await fetchSteamGamePrices(env, steamAppIds as number[], region);
-          return jsonResponse(request, env, prices);
-        });
+        const ids = (steamAppIds as number[]).map(String);
+        const records = await getGgDealsRecords(request, env, ctx, 'steam-app', ids, region);
+        // Unmatched IDs are omitted, as before.
+        const prices = (steamAppIds as number[])
+          .map((steamAppId) => normalizeGgDealsGamePrice(steamAppId, records.get(String(steamAppId))))
+          .filter((price) => price !== null);
+        return priceResponse(request, env, ids, records, prices);
+      }
+
+      if (url.pathname === '/api/prices/slug') {
+        const keys = [...url.searchParams.keys()];
+        if (keys.some((key) => key !== 'slugs' && key !== 'region') || keys.length !== new Set(keys).size) {
+          return errorResponse(request, env, 400, 'Unsupported query parameter');
+        }
+
+        const rawSlugs = url.searchParams.get('slugs') || '';
+        const slugParts = rawSlugs.split(',');
+        if (!rawSlugs || !slugParts.every(isValidGgDealsSlug)) {
+          return errorResponse(request, env, 400, 'Invalid GG.deals slugs');
+        }
+        const slugs = [...new Set(slugParts)];
+        if (slugs.length > MAX_PRICE_IDS) {
+          return errorResponse(request, env, 400, `Provide between 1 and ${MAX_PRICE_IDS} GG.deals slugs`);
+        }
+        const region = parsePriceRegion(url);
+        if (!region) return errorResponse(request, env, 400, 'Unsupported GG.deals region');
+
+        const records = await getGgDealsRecords(request, env, ctx, 'slug', slugs, region);
+        const prices = slugs
+          .map((slug) => normalizeGgDealsSlugPrice(slug, records.get(slug)))
+          .filter((price) => price !== null);
+        return priceResponse(request, env, slugs, records, prices);
       }
 
       const priceMatch = url.pathname.match(/^\/api\/prices\/steam\/(\d+)$/);
@@ -1106,13 +1277,13 @@ const worker = {
 
         const steamAppId = parsePositiveInteger(priceMatch[1]);
         if (!steamAppId) return errorResponse(request, env, 400, 'Invalid Steam App ID');
-        const region = (url.searchParams.get('region') || 'us').toLowerCase();
-        if (!GG_DEALS_REGIONS.has(region)) return errorResponse(request, env, 400, 'Unsupported GG.deals region');
+        const region = parsePriceRegion(url);
+        if (!region) return errorResponse(request, env, 400, 'Unsupported GG.deals region');
 
-        return withCache(request, env, ctx, PRICE_CACHE_SECONDS, async () => {
-          const price = await fetchSteamGamePrice(env, steamAppId, region);
-          return jsonResponse(request, env, price);
-        });
+        const records = await getGgDealsRecords(request, env, ctx, 'steam-app', [String(steamAppId)], region);
+        // No match is `null`, as before.
+        const price = normalizeGgDealsGamePrice(steamAppId, records.get(String(steamAppId)));
+        return priceResponse(request, env, [String(steamAppId)], records, price);
       }
 
       const detailsMatch = url.pathname.match(/^\/api\/games\/(\d+)$/);
