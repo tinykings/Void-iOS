@@ -80,7 +80,8 @@ struct PosterCard: View {
                 PosterImage(path: media.posterPath ?? item.image)
                     .aspectRatio(2 / 3, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.voidBorder))
+                    .overlay(RoundedRectangle(cornerRadius: 10)
+                        .stroke(item.isPinned ? Color.voidCyan : Color.voidBorder, lineWidth: item.isPinned ? 2.5 : 1))
                     .overlay(alignment: .topTrailing) { marks }
                     .overlay(alignment: .bottomLeading) {
                         if let badge {
@@ -103,7 +104,7 @@ struct PosterCard: View {
         .buttonStyle(.plain)
         .contextMenu { LibraryActions(media: media) }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel([media.title, item.isFavorite ? "favorite" : nil, badge]
+        .accessibilityLabel([media.title, item.isPinned ? "pinned" : nil, item.isFavorite ? "favorite" : nil, badge]
             .compactMap { $0 }.joined(separator: ", "))
     }
 
@@ -140,6 +141,13 @@ struct LibraryActions: View {
                 item?.isFavorite == true
                     ? Label("Remove Favorite", systemImage: "heart.slash")
                     : Label("Favorite", systemImage: "heart")
+            }
+        }
+        if let item, item.list != .none {
+            Button { store.togglePin(media.key) } label: {
+                item.isPinned
+                    ? Label("Unpin", systemImage: "pin.slash")
+                    : Label("Pin to Top", systemImage: "pin")
             }
         }
     }

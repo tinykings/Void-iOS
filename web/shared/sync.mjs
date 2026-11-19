@@ -36,6 +36,7 @@ export function fieldsFor(item) {
     list: str(item.list), addedAt: str(item.addedAt),
     isFavorite: int(item.isFavorite ? 1 : 0),
     rating: int(item.rating ?? 0), returnedFor: str(item.returnedFor ?? ""),
+    pinnedAt: str(item.pinnedAt ?? ""),
     schemaVersion: int(SCHEMA_VERSION),
   };
 }
@@ -57,6 +58,7 @@ export function decodeRecord(record) {
   const releaseDate = field(record, "releaseDate");
   const returnedFor = field(record, "returnedFor");
   const rating = field(record, "rating");
+  const pinnedAt = field(record, "pinnedAt");
   return {
     ...key, title, image: cleanImage(field(record, "image")),
     releaseDate: isCalendarDate(releaseDate) ? releaseDate : null,
@@ -64,6 +66,7 @@ export function decodeRecord(record) {
     isFavorite: field(record, "isFavorite") === 1,
     rating: Number.isInteger(rating) && rating >= 0 && rating <= 5 ? rating : 0,
     returnedFor: isCalendarDate(returnedFor) ? returnedFor : null,
+    pinnedAt: ISO_TIME.test(pinnedAt ?? "") ? new Date(pinnedAt).toISOString() : null,
   };
 }
 

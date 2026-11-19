@@ -23,7 +23,7 @@ enum ListState: String, Codable, Sendable {
 }
 
 enum FieldGroup: String, Codable, CaseIterable, Sendable {
-    case list, favorite, rating
+    case list, favorite, rating, pin
 }
 
 struct SyncedItem: Codable, Equatable, Sendable {
@@ -38,10 +38,13 @@ struct SyncedItem: Codable, Equatable, Sendable {
     var rating = 0
     // The air date of the episode that last brought this show back to the Playlist.
     var returnedFor: String?
+    // ISO 8601 UTC with milliseconds: when it was pinned to the top of its list. Only
+    // counts while it's in the list it was pinned in (see `isPinned`).
+    var pinnedAt: String?
 
     init(key: MediaKey, title: String, image: String? = nil, releaseDate: String? = nil,
          list: ListState, addedAt: String, isFavorite: Bool = false,
-         rating: Int = 0, returnedFor: String? = nil) {
+         rating: Int = 0, returnedFor: String? = nil, pinnedAt: String? = nil) {
         self.key = key
         self.title = title
         self.image = image
@@ -51,6 +54,16 @@ struct SyncedItem: Codable, Equatable, Sendable {
         self.isFavorite = isFavorite
         self.rating = rating
         self.returnedFor = returnedFor
+        self.pinnedAt = pinnedAt
+    }
+
+    // Pinned since it entered its current list. Moving lists or being removed sets
+    // `addedAt` later than the pin, so the pin lapses without its own write, and a
+    // client that doesn't know about pins can't leave a stale one behind.
+    var isPinned: Bool {
+        guard list != .none, let pinnedAt, let pinned = SyncCodec.date(pinnedAt),
+              let added = SyncCodec.date(addedAt) else { return false }
+        return pinned >= added
     }
 
     init(media: Media, list: ListState, addedAt: String) {
@@ -66,6 +79,7 @@ struct SyncedItem: Codable, Equatable, Sendable {
             returnedFor = other.returnedFor
         case .favorite: isFavorite = other.isFavorite
         case .rating: rating = other.rating
+        case .pin: pinnedAt = other.pinnedAt
         }
     }
 }
@@ -144,6 +158,7 @@ struct SyncLibrary: Codable, Equatable, Sendable {
         gone.addedAt = SyncCodec.iso(now)
         gone.isFavorite = false
         gone.rating = 0
+        gone.pinnedAt = nil
         write(gone, Set(FieldGroup.allCases))
     }
 
@@ -184,6 +199,13 @@ struct SyncLibrary: Codable, Equatable, Sendable {
         default: return
         }
         write(entry, [.favorite])
+    }
+
+    // Pins an item to the top of the Playlist or History, whichever it's in, or unpins it.
+    mutating func togglePin(_ key: MediaKey, now: Date = Date()) {
+        guard var entry = item(key), entry.list != .none else { return }
+        entry.pinnedAt = entry.isPinned ? nil : SyncCodec.iso(now)
+        write(entry, [.pin])
     }
 
     // A History show with an episode airing soon goes back to the Playlist, once per

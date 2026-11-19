@@ -72,6 +72,7 @@ enum SyncCodec {
             "isFavorite": .int(item.isFavorite ? 1 : 0),
             "rating": .int(Int64(item.rating)),
             "returnedFor": .string(item.returnedFor ?? ""),
+            "pinnedAt": .string(item.pinnedAt ?? ""),
             "schemaVersion": .int(Int64(schemaVersion)),
         ]
     }
@@ -91,9 +92,10 @@ enum SyncCodec {
         let release = fields["releaseDate"]?.string.flatMap { isCalendarDate($0) ? $0 : nil }
         let returned = fields["returnedFor"]?.string.flatMap { isCalendarDate($0) ? $0 : nil }
         let rating = Int(clamping: fields["rating"]?.int ?? 0)
+        let pinned = fields["pinnedAt"]?.string.flatMap(date).map(iso)
         return SyncedItem(
             key: key, title: title, image: cleanImage(fields["image"]?.string), releaseDate: release,
             list: list, addedAt: iso(added), isFavorite: fields["isFavorite"]?.int == 1,
-            rating: (0...5).contains(rating) ? rating : 0, returnedFor: returned)
+            rating: (0...5).contains(rating) ? rating : 0, returnedFor: returned, pinnedAt: pinned)
     }
 }

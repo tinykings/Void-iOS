@@ -10,9 +10,9 @@
 //   checks: { [recordName]: { checkedAt, status } },   // this browser's return checks
 // }
 // item = { source, mediaType, mediaID, title, image, releaseDate, list, addedAt,
-//          isFavorite, rating, returnedFor }
+//          isFavorite, rating, returnedFor, pinnedAt }
 
-export const FIELD_GROUPS = ["list", "favorite", "rating"];
+export const FIELD_GROUPS = ["list", "favorite", "rating", "pin"];
 export const MEDIA_TYPES = ["movie", "tv", "game"];
 export const RETURN_WINDOW_DAYS = 7;
 export const RETURN_CHECK_INTERVAL = 24 * 60 * 60 * 1000;
@@ -48,8 +48,16 @@ function itemFromMedia(media, list, now) {
   return {
     source: media.source ?? defaultSource(media.mediaType), mediaType: media.mediaType, mediaID: media.id,
     title: media.title, image: media.posterPath ?? null, releaseDate: media.releaseDate ?? null,
-    list, addedAt: isoNow(now), isFavorite: false, rating: 0, returnedFor: null,
+    list, addedAt: isoNow(now), isFavorite: false, rating: 0, returnedFor: null, pinnedAt: null,
   };
+}
+
+// Pinned since it entered its current list. Moving lists or being removed sets addedAt
+// later than the pin, so the pin lapses without its own write, and a client that
+// doesn't know about pins can't leave a stale one behind.
+export function isPinned(item) {
+  if (!item || item.list === "none" || !item.pinnedAt) return false;
+  return Date.parse(item.pinnedAt) >= Date.parse(item.addedAt);
 }
 
 function refreshed(item, media) {
@@ -77,7 +85,7 @@ function write(state, item, fields, returnFor = null) {
 }
 
 function remove(state, item, now) {
-  return write(state, { ...item, list: "none", addedAt: isoNow(now), isFavorite: false, rating: 0 }, FIELD_GROUPS);
+  return write(state, { ...item, list: "none", addedAt: isoNow(now), isFavorite: false, rating: 0, pinnedAt: null }, FIELD_GROUPS);
 }
 
 export function itemFor(state, media) {
@@ -109,6 +117,13 @@ export function toggleFavorite(state, name) {
   return state;
 }
 
+// Pins an item to the top of the Playlist or History, whichever it's in, or unpins it.
+export function togglePin(state, name, now = Date.now()) {
+  const item = state.items[name];
+  if (!item || item.list === "none") return state;
+  return write(state, { ...item, pinnedAt: isPinned(item) ? null : isoNow(now) }, ["pin"]);
+}
+
 // A History show with an episode airing soon goes back to the Playlist, once per episode.
 export function returnToPlaylist(state, name, airDate, now = Date.now()) {
   const item = state.items[name];
@@ -133,6 +148,7 @@ function copyGroup(target, source, group) {
   if (group === "list") Object.assign(target, { list: source.list, addedAt: source.addedAt, returnedFor: source.returnedFor });
   if (group === "favorite") target.isFavorite = source.isFavorite;
   if (group === "rating") target.rating = source.rating;
+  if (group === "pin") target.pinnedAt = source.pinnedAt ?? null;
 }
 
 // A remote record (already decoded) into a cloned state: pending field groups keep
@@ -185,8 +201,15 @@ export function needsReturnCheck(check, now) {
 // Shown items of a list, filtered by type, sorted as on iOS: the Playlist puts shows with
 // an episode within 30 days (or aired in the last 3) and releases within 30 days first
 // (soonest first), then newest added; History
-// is newest first. `details(name)` gives cached { nextAirDate } when known.
-export function listItems(state, list, { type = null, favoritesOnly = false, enabled = MEDIA_TYPES, details = () => null, now = Date.now() } = {}) {
+// is newest first. Pinned items go before all of that, the most recently pinned first.
+// `details(name)` gives cached { nextAirDate } when known.
+export function listItems(state, list, options = {}) {
+  const sorted = sortedListItems(state, list, options);
+  const pinned = sorted.filter(entry => isPinned(entry.item)).sort((a, b) => b.item.pinnedAt.localeCompare(a.item.pinnedAt));
+  return [...pinned, ...sorted.filter(entry => !isPinned(entry.item))];
+}
+
+function sortedListItems(state, list, { type = null, favoritesOnly = false, enabled = MEDIA_TYPES, details = () => null, now = Date.now() } = {}) {
   const items = Object.entries(state.items)
     .filter(([, item]) => item.list === list && enabled.includes(item.mediaType) && (!type || item.mediaType === type) && (!favoritesOnly || item.isFavorite))
     .map(([name, item]) => ({ name, item }));

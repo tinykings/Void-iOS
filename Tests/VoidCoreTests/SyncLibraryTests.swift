@@ -38,6 +38,58 @@ final class SyncLibraryTests: XCTestCase {
         XCTAssertEqual(library.item(show.key)?.isFavorite, false)
     }
 
+    func testPinBelongsToTheListItWasPinnedIn() {
+        var library = SyncLibrary()
+        library.togglePin(show.key, now: t0)
+        XCTAssertNil(library.item(show.key), "nothing to pin outside the library")
+
+        library.togglePlaylist(show, now: t0)
+        library.togglePin(show.key, now: t0.addingTimeInterval(1))
+        XCTAssertEqual(library.item(show.key)?.isPinned, true)
+        XCTAssertEqual(library.dirty[show.key.recordName]?.fields, [.list, .pin])
+
+        // Moving to History lapses the pin without writing it.
+        library.toggleHistory(show, now: t0.addingTimeInterval(2))
+        XCTAssertEqual(library.item(show.key)?.isPinned, false)
+        XCTAssertNotNil(library.item(show.key)?.pinnedAt)
+
+        // Pinning there pins it in History; unpinning clears it.
+        library.togglePin(show.key, now: t0.addingTimeInterval(3))
+        XCTAssertEqual(library.item(show.key)?.isPinned, true)
+        library.togglePin(show.key, now: t0.addingTimeInterval(4))
+        XCTAssertEqual(library.item(show.key)?.isPinned, false)
+        XCTAssertNil(library.item(show.key)?.pinnedAt)
+
+        // Removing clears it, and a removed item can't be pinned.
+        library.togglePin(show.key, now: t0.addingTimeInterval(5))
+        library.toggleHistory(show, now: t0.addingTimeInterval(6))
+        XCTAssertNil(library.item(show.key)?.pinnedAt)
+        library.togglePin(show.key, now: t0.addingTimeInterval(7))
+        XCTAssertNil(library.item(show.key)?.pinnedAt)
+
+        // A return to the Playlist lapses a History pin too.
+        library.toggleHistory(show, now: t0.addingTimeInterval(8))
+        library.togglePin(show.key, now: t0.addingTimeInterval(9))
+        library.returnToPlaylist(show.key, airDate: "2027-01-01", now: t0.addingTimeInterval(10))
+        XCTAssertEqual(library.item(show.key)?.isPinned, false)
+    }
+
+    func testPendingPinSurvivesANewerRemoteRevision() {
+        var library = SyncLibrary()
+        library.togglePlaylist(show, now: t0)
+        library.pushSucceeded(recordName: show.key.recordName, rev: library.rev, systemFields: nil)
+        library.togglePin(show.key, now: t0.addingTimeInterval(1))
+
+        // Another device rated it meanwhile: the pin is kept and written again.
+        var remote = library.item(show.key)!
+        remote.pinnedAt = nil
+        remote.rating = 4
+        library.applyRemote(recordName: show.key.recordName, item: remote, systemFields: nil)
+        XCTAssertEqual(library.item(show.key)?.isPinned, true)
+        XCTAssertEqual(library.item(show.key)?.rating, 4)
+        XCTAssertEqual(library.dirty[show.key.recordName]?.fields, [.pin])
+    }
+
     func testLoadsPendingMarksFromBeforePurchasedWasRemoved() throws {
         // A library saved by an older build with a pending `purchased` intention.
         let json = #"{"entries":{},"dirty":{"item.igdb.game.1":{"rev":3,"mode":"set","fields":["list","purchased"]}},"rev":3,"systemFields":{},"zoneReady":true}"#

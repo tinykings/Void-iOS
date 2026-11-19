@@ -108,7 +108,8 @@ struct DetailsView: View {
             PosterImage(path: shown.posterPath ?? item?.image, size: "w342")
                 .frame(width: 110, height: 165)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.voidBorder))
+                .overlay(RoundedRectangle(cornerRadius: 10)
+                    .stroke(item?.isPinned == true ? Color.voidCyan : Color.voidBorder, lineWidth: item?.isPinned == true ? 2.5 : 1))
             VStack(alignment: .leading, spacing: 8) {
                 Text(shown.title).font(.title2.weight(.black)).fixedSize(horizontal: false, vertical: true)
                 Text(facts.joined(separator: " · ").uppercased())
@@ -120,12 +121,17 @@ struct DetailsView: View {
                     Label(String(format: "%.1f", shown.voteAverage), systemImage: "star.fill")
                         .font(.voidReadout).foregroundStyle(Color.voidCyan)
                 }
-                if isGame {
-                    if !shown.platforms.isEmpty {
-                        Text(shown.platforms.joined(separator: ", ")).font(.footnote).foregroundStyle(Color.voidSilver)
+                // Where it streams (or a game's platforms), with the pin at the right.
+                HStack(alignment: .center, spacing: 8) {
+                    if isGame {
+                        if !shown.platforms.isEmpty {
+                            Text(shown.platforms.joined(separator: ", ")).font(.footnote).foregroundStyle(Color.voidSilver)
+                        }
+                    } else {
+                        streaming
                     }
-                } else {
-                    streaming
+                    Spacer(minLength: 0)
+                    pinButton
                 }
             }
         }
@@ -182,6 +188,24 @@ struct DetailsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+    }
+
+    // Pins it to the top of the Playlist or History, whichever it's in.
+    @ViewBuilder private var pinButton: some View {
+        if let item, item.list != .none {
+            let pinned = item.isPinned
+            Button { store.togglePin(seed.key) } label: {
+                Image(systemName: pinned ? "pin.fill" : "pin")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(width: 34, height: 34)
+                    .foregroundStyle(pinned ? Color.voidOnAccent : Color.voidCyan)
+                    .background(pinned ? Color.voidCyan : Color.voidSurface, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(pinned ? Color.voidCyan : Color.voidBorder))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(pinned ? "Unpin" : "Pin to top of \(item.list == .playlist ? "Playlist" : "History")")
+            .sensoryFeedback(.selection, trigger: pinned)
+        }
     }
 
     private func sectionTitle(_ text: String) -> some View {

@@ -2,7 +2,7 @@
 // to add. Storage, sign-in and sync are in site.mjs.
 import { createSite, describeCloudKitError, CloudKitError, takeCallback } from "./site.mjs";
 import { imageURL, rankSearchResults, trailerEmbedURL, trailerThumbnailURL } from "../shared/api.mjs";
-import { itemFor, listItems, MEDIA_TYPES, recordName } from "../shared/library.mjs";
+import { isPinned, itemFor, listItems, MEDIA_TYPES, recordName } from "../shared/library.mjs";
 
 const main = document.querySelector("main");
 // Inside another site's frame, stay hidden, so nobody can trick clicks.
@@ -102,6 +102,8 @@ function card(media, item, name) {
   const upcoming = days !== null && days > 0;
   frame.append(poster(media.posterPath));
   if (upcoming) button.classList.add("upcoming");
+  const pinned = !browsing() && isPinned(item);
+  if (pinned) button.classList.add("pinned");
   const label = badge(name, item ?? {});
   if (label) frame.append(element("span", "badge", label));
   const marks = [browsing() && item?.list === "playlist" && "+", browsing() && item?.list === "history" && "✓", item?.isFavorite && "♥"].filter(Boolean).join(" ");
@@ -109,7 +111,7 @@ function card(media, item, name) {
   button.append(frame);
   button.append(element("span", "title", media.title));
   if (browsing()) button.append(element("span", "meta", [TYPE_NAMES[media.mediaType], upcoming ? countdown(days) : media.releaseDate?.slice(0, 4)].filter(Boolean).join(" · ")));
-  button.setAttribute("aria-label", [media.title, upcoming && `coming ${countdown(days).toLowerCase()}`, item?.isFavorite && "favorite", label].filter(Boolean).join(", "));
+  button.setAttribute("aria-label", [media.title, upcoming && `coming ${countdown(days).toLowerCase()}`, pinned && "pinned", item?.isFavorite && "favorite", label].filter(Boolean).join(", "));
   button.addEventListener("click", () => openDetails(media));
   return button;
 }
@@ -224,6 +226,8 @@ function renderDetails() {
   action(item?.list === "playlist" ? "✓ On Playlist" : "+ Playlist", item?.list === "playlist", () => site.togglePlaylist(media));
   action(item?.list === "history" ? "✓ Played" : "Mark Played", item?.list === "history", () => site.toggleHistory(media));
   if (item?.list === "history" || item?.isFavorite) action(item?.isFavorite ? "♥ Favorite" : "♡ Favorite", Boolean(item?.isFavorite), () => site.toggleFavorite(name));
+  // Pins it to the top of the Playlist or History, whichever it's in.
+  if (item && item.list !== "none") action(isPinned(item) ? "Pinned" : "Pin to Top", isPinned(item), () => site.togglePin(name));
   body.append(actions);
 
   if (media.mediaType !== "game") {

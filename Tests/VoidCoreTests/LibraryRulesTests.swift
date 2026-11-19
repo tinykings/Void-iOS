@@ -97,6 +97,22 @@ final class LibraryRulesTests: XCTestCase {
         XCTAssertEqual(LibraryRules.steamAppID(media), 400)
     }
 
+    func testPinnedFirst() {
+        func item(_ id: Int, pinnedAt: String? = nil, addedAt: String = "2026-11-01T00:00:00.000Z") -> SyncedItem {
+            SyncedItem(key: MediaKey(source: .tmdb, type: .movie, id: id), title: "\(id)", list: .playlist,
+                       addedAt: addedAt, pinnedAt: pinnedAt)
+        }
+        let items = [
+            item(1),
+            item(2, pinnedAt: "2026-11-02T00:00:00.000Z"),
+            item(3),
+            item(4, pinnedAt: "2026-11-03T00:00:00.000Z"),
+            // Pinned before it entered this list: no longer pinned.
+            item(5, pinnedAt: "2026-10-01T00:00:00.000Z"),
+        ]
+        XCTAssertEqual(LibraryRules.pinnedFirst(items).map(\.key.id), [4, 2, 1, 3, 5])
+    }
+
     func testMixTrending() {
         func movie(_ id: Int) -> Media { Media(id: id, mediaType: .movie, title: "Movie \(id)") }
         func show(_ id: Int) -> Media { Media(id: id, mediaType: .tv, title: "Show \(id)") }

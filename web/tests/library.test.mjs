@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { emptyState, importItems, isInLocalDayWindow, listItems, parseRecordName, recordName, returnToPlaylist, toggleFavorite, toggleHistory, togglePlaylist } from "../shared/library.mjs";
+import { applyRemoteItem, emptyState, importItems, isInLocalDayWindow, isPinned, listItems, parseRecordName, recordName, returnToPlaylist, toggleFavorite, toggleHistory, togglePin, togglePlaylist } from "../shared/library.mjs";
 
 const show = { source: "tmdb", mediaType: "tv", id: 1399, title: "Game of Thrones", posterPath: "/got.jpg", releaseDate: "2011-04-17" };
 const game = { source: "igdb", mediaType: "game", id: 1942, title: "The Witcher 3", posterPath: "https://images.igdb.com/w3.jpg" };
@@ -24,7 +24,7 @@ test("playlist and history toggle like the webapp, removals are tombstones", () 
   s = toggleHistory(s, show, T);
   assert.equal(s.items[showName].list, "none");
   assert.equal(s.items[showName].isFavorite, false);
-  assert.deepEqual(s.sync.dirty[showName].fields.sort(), ["favorite", "list", "rating"]);
+  assert.deepEqual(s.sync.dirty[showName].fields.sort(), ["favorite", "list", "pin", "rating"]);
 });
 
 test("favorites on the Playlist can only be cleared", () => {
@@ -76,4 +76,53 @@ test("the Playlist puts shows airing within 30 days first, not ones far off", ()
   const nextAirDate = { "item.tmdb.tv.1": day(238), "item.tmdb.tv.2": day(5) };
   const names = listItems(s, "playlist", { details: name => ({ nextAirDate: nextAirDate[name] }), now: T }).map(entry => entry.name);
   assert.deepEqual(names, ["item.tmdb.tv.2", "item.tmdb.tv.1"]);
+});
+
+test("a pin belongs to the list it was pinned in, as on iOS", () => {
+  let state = togglePin(emptyState(), showName, T);
+  assert.equal(state.items[showName], undefined, "nothing to pin outside the library");
+
+  state = togglePlaylist(state, show, T);
+  state = togglePin(state, showName, T + 1000);
+  assert.equal(isPinned(state.items[showName]), true);
+  assert.deepEqual(state.sync.dirty[showName].fields, ["list", "pin"]);
+
+  // Moving to History lapses the pin without writing it.
+  state = toggleHistory(state, show, T + 2000);
+  assert.equal(isPinned(state.items[showName]), false);
+  assert.ok(state.items[showName].pinnedAt);
+
+  state = togglePin(state, showName, T + 3000);
+  assert.equal(isPinned(state.items[showName]), true);
+  state = togglePin(state, showName, T + 4000);
+  assert.equal(state.items[showName].pinnedAt, null);
+
+  // Removing clears it, and a removed item can't be pinned.
+  state = togglePin(state, showName, T + 5000);
+  state = toggleHistory(state, show, T + 6000);
+  assert.equal(state.items[showName].pinnedAt, null);
+  assert.equal(togglePin(state, showName, T + 7000), state);
+
+  // A return lapses a History pin too.
+  state = toggleHistory(state, show, T + 8000);
+  state = togglePin(state, showName, T + 9000);
+  state = returnToPlaylist(state, showName, "2027-01-01", T + 10000);
+  assert.equal(isPinned(state.items[showName]), false);
+});
+
+test("pinned items come first, most recently pinned on top, and a pending pin survives a newer remote", () => {
+  let state = emptyState();
+  state = togglePlaylist(state, show, T);
+  state = togglePlaylist(state, game, T + 1000);
+  const other = { source: "tmdb", mediaType: "movie", id: 5, title: "Five" };
+  state = togglePlaylist(state, other, T + 2000);
+  assert.deepEqual(listItems(state, "playlist", { now: T }).map(e => e.item.mediaID), [5, 1942, 1399]);
+  state = togglePin(state, showName, T + 3000);
+  state = togglePin(state, gameName, T + 4000);
+  assert.deepEqual(listItems(state, "playlist", { now: T }).map(e => e.item.mediaID), [1942, 1399, 5]);
+
+  const next = structuredClone(state);
+  applyRemoteItem(next, showName, { ...state.items[showName], pinnedAt: null, rating: 4 });
+  assert.equal(isPinned(next.items[showName]), true);
+  assert.equal(next.items[showName].rating, 4);
 });

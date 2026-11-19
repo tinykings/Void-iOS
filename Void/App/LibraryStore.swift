@@ -92,13 +92,13 @@ final class LibraryStore: ObservableObject {
         let items = library.list(list).filter { enabledTypes.contains($0.key.type) && (type == nil || $0.key.type == type) }
         switch list {
         case .playlist:
-            return LibraryRules.sortPlaylist(items) { item in
+            return LibraryRules.pinnedFirst(LibraryRules.sortPlaylist(items) { item in
                 let media = cache[item.key.recordName]?.media
                 return .init(type: item.key.type, releaseDate: media?.releaseDate ?? item.releaseDate,
                              nextEpisodeAirDate: media?.nextEpisodeToAir?.airDate, addedAt: item.addedAt)
-            }
+            })
         default:
-            return items.sorted { $0.addedAt > $1.addedAt }
+            return LibraryRules.pinnedFirst(items.sorted { $0.addedAt > $1.addedAt })
         }
     }
 
@@ -115,6 +115,7 @@ final class LibraryStore: ObservableObject {
     }
 
     func toggleFavorite(_ key: MediaKey) { sync.change { $0.toggleFavorite(key) } }
+    func togglePin(_ key: MediaKey) { sync.change { $0.togglePin(key) } }
 
     // MARK: Details cache
 

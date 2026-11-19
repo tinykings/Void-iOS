@@ -92,6 +92,13 @@ enum LibraryRules {
         return upcoming.sorted { $0.1 < $1.1 }.map(\.0) + rest.sorted { $0.1 > $1.1 }.map(\.0)
     }
 
+    // Pinned items first, the most recently pinned on top; everything else keeps the
+    // list's own order.
+    static func pinnedFirst(_ items: [SyncedItem]) -> [SyncedItem] {
+        let pinned = items.filter(\.isPinned).sorted { ($0.pinnedAt ?? "") > ($1.pinnedAt ?? "") }
+        return pinned + items.filter { !$0.isPinned }
+    }
+
     // MARK: Search
 
     static func normalizedSearchText(_ value: String) -> String {

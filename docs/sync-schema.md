@@ -45,6 +45,7 @@ a higher version rather than misreading or overwriting them.
 | `isFavorite` | INT64 | `1` or `0` |
 | `rating` | INT64 | The person's rating, 1 to 5, or `0` when none |
 | `returnedFor` | STRING | Air date (`YYYY-MM-DD`) of the episode that last moved this show from History back to the Playlist, or empty |
+| `pinnedAt` | STRING | ISO time it was pinned to the top of its list, or empty. Added November 2026; see Pins below |
 | `schemaVersion` | INT64 | |
 
 Removing an item writes `list = none`; records are never deleted, so a stale client
@@ -63,6 +64,7 @@ offline and relaunches). Fields are grouped:
 - **list**: `list`, `addedAt`, `returnedFor`
 - **favorite**: `isFavorite`
 - **rating**: `rating`
+- **pin**: `pinnedAt`
 
 A pending group a client no longer knows (the retired `purchased`) is ignored when the
 saved library loads.
@@ -83,6 +85,20 @@ remote copy's values are taken unless the item is new here.
   `list = playlist`, `addedAt = now` and `returnedFor = <air date>`. Because the rule
   only depends on the record and TMDB, two devices that both run it agree, and a
   show marked played after its return doesn't come back again for the same episode.
+
+### Pins
+
+- An item counts as pinned only while `list` is `playlist` or `history` and
+  `pinnedAt` is at or after `addedAt`, meaning it was pinned in the list it's in now.
+  Moving lists, removing it, or a return to the Playlist sets a later `addedAt`, so the
+  pin lapses without its own write. Removing also clears `pinnedAt`.
+- Pinning writes `pinnedAt = now` (the **pin** group); unpinning writes it empty.
+- Pinned items sort before the list's usual order, the most recently pinned first.
+- `pinnedAt` was added without changing `schemaVersion`. Clients from before it never
+  write it (CloudKit leaves fields a write doesn't name alone) and their list changes
+  set a later `addedAt`, which is why the rule compares the two rather than trusting
+  `pinnedAt` alone. **Before releasing**, run a Debug build to create the field in
+  Development, then deploy the schema to Production in CloudKit Console.
 
 ## Writing and conflicts
 
