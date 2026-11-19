@@ -96,8 +96,7 @@ remote copy's values are taken unless the item is new here.
 - A pending **return** (the returning-shows move) is dropped when the remote record
   is no longer in History or its `returnedFor` already equals the pending air date.
 - Turning sync on with existing local data is an **import**: it creates records only
-  where none exist and never overwrites a remote record or tombstone. Importing a
-  library from the old [void] webapp (`void-data.json`) works the same way.
+  where none exist and never overwrites a remote record or tombstone.
 - Order competing devices by accepted writes, not by their clocks.
 
 ## Accounts

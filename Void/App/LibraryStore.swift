@@ -88,14 +88,6 @@ final class LibraryStore: ObservableObject {
 
     func toggleFavorite(_ key: MediaKey) { sync.change { $0.toggleFavorite(key) } }
 
-    // The old webapp's void-data.json. Returns how many items were added.
-    func importLegacy(_ data: Data) throws -> Int {
-        let items = try LegacyImport.items(from: data)
-        var added = 0
-        sync.change { added = $0.importItems(items) }
-        return added
-    }
-
     // MARK: Details cache
 
     private func remember(_ media: Media, returnCheckedAt: Date? = nil) {

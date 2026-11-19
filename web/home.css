@@ -43,7 +43,6 @@ h3 { font-size: 17px; margin: 28px 0 4px; }
 .list div:last-child { border-bottom: 0; }
 .list dt { font: 700 12px/1.6 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--cyan); padding-top: 3px; }
 .list dd { margin: 0; }
-.note { color: var(--muted); font-size: 15px; margin: 18px 0 0; }
 
 .privacy ul { padding-left: 22px; }
 .privacy li { margin-bottom: 6px; }
@@ -59,4 +58,3 @@ footer a { color: var(--muted); }
   .lede { font-size: 18px; }
   .list div { grid-template-columns: 1fr; gap: 2px; }
 }
-.note code { font: 14px var(--mono); color: var(--fg); }

@@ -1,11 +1,8 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var store: LibraryStore
     @Environment(\.dismiss) private var dismiss
-    @State private var importing = false
-    @State private var importResult: String?
     @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = DisplaySettings.showTitlesDefault
     @AppStorage(ReleaseNotifier.enabledKey) private var notify = false
     @State private var notificationsDenied = false
@@ -14,6 +11,24 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Link(destination: URL(string: "https://void.tinyk.ing/app/")!) {
+                        VStack(spacing: 10) {
+                            Image("Logo")
+                                .resizable()
+                                .frame(width: 88, height: 88)
+                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.voidBorder))
+                                .accessibilityHidden(true)
+                            Label("[void] on the web", systemImage: "arrow.up.right").font(.subheadline.weight(.semibold))
+                            Text("void.tinyk.ing/app").font(.caption).foregroundStyle(Color.voidSilver)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                    }
+                    .accessibilityLabel("Open [void] on the web")
+                }
+
                 Section {
                     ForEach(MediaType.allCases, id: \.self) { type in
                         Toggle(type.label, isOn: Binding(
@@ -89,17 +104,6 @@ struct SettingsView: View {
                     Text("Your library syncs through your private iCloud database with your other devices and with [void] on the web at void.tinyk.ing/app (sign in with the same Apple Account).")
                 }
 
-                Section {
-                    Button("Import from the old [void] webapp…") { importing = true }
-                    if let importResult {
-                        Text(importResult).font(.footnote).foregroundStyle(Color.voidSilver)
-                    }
-                } header: {
-                    Text("Import")
-                } footer: {
-                    Text("Choose void-data.json from your [void] GitHub Gist (download it from the gist's Raw button). Items already in your library are left as they are.")
-                }
-
                 Section("About") {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
                     Link("Privacy Policy", destination: URL(string: "https://void.tinyk.ing/privacy.html")!)
@@ -112,23 +116,7 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.json, .plainText]) { result in
-                importResult = importFile(result)
-            }
             .voidScreen()
-        }
-    }
-
-    private func importFile(_ result: Result<URL, Error>) -> String {
-        do {
-            let url = try result.get()
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            let data = try Data(contentsOf: url)
-            let added = try store.importLegacy(data)
-            return added == 0 ? "Nothing new to import." : "Imported \(added) item\(added == 1 ? "" : "s")."
-        } catch {
-            return "Couldn't import: \(error.localizedDescription)"
         }
     }
 }

@@ -48,28 +48,6 @@ final class CodecTests: XCTestCase {
         XCTAssertNil(SyncCodec.date("2026-11-13 22:04:05"))
     }
 
-    func testLegacyImport() throws {
-        let json = """
-        {"version":4,
-         "watchlist":[{"id":1399,"title":"Game of Thrones","media_type":"tv","source":"tmdb","date_added":"2025-01-02T03:04:05.678Z","image":"/got.jpg"},
-                      {"id":9,"title":"Hades","media_type":"game","date_added":"2025-01-02","isPurchased":true}],
-         "watched":[{"id":5,"title":"Dune","media_type":"movie","date_added":"2024-05-06T00:00:00.000Z","release_date":"2021-10-22","rating":4},
-                    {"id":1399,"title":"dupe","media_type":"tv","date_added":"2024-05-06T00:00:00.000Z"},
-                    {"id":"bad"}],
-         "favorites":[{"id":5,"title":"Dune","media_type":"movie","date_added":"2024-05-06T00:00:00.000Z"}],
-         "playedEpisodes":{}}
-        """
-        let items = try LegacyImport.items(from: Data(json.utf8))
-        XCTAssertEqual(items.map(\.key.recordName), ["item.tmdb.tv.1399", "item.igdb.game.9", "item.tmdb.movie.5"])
-        XCTAssertEqual(items[0].list, .playlist)
-        XCTAssertEqual(items[0].addedAt, "2025-01-02T03:04:05.678Z")
-        XCTAssertEqual(items[1].addedAt, "2025-01-02T00:00:00.000Z")
-        XCTAssertEqual(items[2].list, .history)
-        XCTAssertEqual(items[2].isFavorite, true)
-        XCTAssertEqual(items[2].rating, 4)
-        XCTAssertThrowsError(try LegacyImport.items(from: Data("{}".utf8)))
-    }
-
     func testMediaDecodesTMDBAndWorkerShapes() throws {
         let details = """
         {"id":1399,"name":"Game of Thrones","first_air_date":"2011-04-17","genres":[{"id":1,"name":"Drama"}],

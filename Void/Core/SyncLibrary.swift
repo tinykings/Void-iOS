@@ -13,8 +13,8 @@ import Foundation
 // - The last accepted intention wins, per field group: a pending change is written
 //   again over a newer remote revision, keeping the remote's other fields.
 // - Removals are tombstones (list `none`), never deletions.
-// - An import (items from before sync was on, or from the old webapp) never
-//   overwrites a remote record or tombstone.
+// - An import (items from before sync was on) never overwrites a remote record or
+//   tombstone.
 // - A pending return (a show back from History for a new episode) yields when the
 //   remote record left History or was already returned for that episode.
 

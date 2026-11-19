@@ -19,7 +19,7 @@ An iPhone app with a companion website, synced through your private iCloud.
 
 | Path | What |
 |---|---|
-| `Void/Core/` | Plain Swift: models, the synced library and its conflict rules, the list rules, the API client, importing the old webapp's library. No UIKit/SwiftUI/CloudKit, so `swift test` runs it anywhere, including Linux. |
+| `Void/Core/` | Plain Swift: models, the synced library and its conflict rules, the list rules, the API client. No UIKit/SwiftUI/CloudKit, so `swift test` runs it anywhere, including Linux. |
 | `Void/App/` | CloudKit sync (`CloudSync`, ported from Royal) and the app's state (`LibraryStore`). |
 | `Void/Views/` | SwiftUI screens. |
 | `Tests/` | `swift test` for `Void/Core`, and a record fixture both clients decode. |
@@ -57,8 +57,6 @@ cd worker && npm install && npm test
    Point a DNS `CNAME` for `void` on `tinyk.ing` at `tinykings.github.io`, and in this
    repository's **Settings → Pages** choose *GitHub Actions* and the custom domain
    `void.tinyk.ing`. Pushing to `main` publishes `web/` through `.github/workflows/pages.yml`.
-5. **Moving over from the old webapp:** open the `void-data.json` file in your [void] Gist
-   (Raw), save it, and in the app choose Settings › Import from the old [void] webapp.
 
 `https://void.tinyk.ing/` is the app's info page and privacy policy (`web/index.html`); [void] on
 the web is at `/app/`. The App Store listing's privacy policy URL is

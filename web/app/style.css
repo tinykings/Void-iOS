@@ -79,8 +79,6 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
 .episode .hint { font-size: 12px; }
 button.link { background: none; color: var(--cyan); padding: 2px 0; font-size: 12px; }
 @media (max-width: 420px) { .episode { grid-template-columns: 96px minmax(0, 1fr); } }
-.import { margin-top: 28px; }
-.import button { margin-right: 8px; padding: 6px 10px; font-size: 13px; }
 @media (max-width: 480px) { .details-head { grid-template-columns: 100px minmax(0, 1fr); } }
 footer { margin-top: 32px; border-top: 1px solid var(--border); padding-top: 10px; }
 .noscript { padding: 20px; }
