@@ -182,6 +182,37 @@ final class LibraryStore: ObservableObject {
         }
     }
 
+    // Details for the given games that have none cached on this device, such as ones
+    // imported or added on the website (iCloud doesn't carry their Steam app ID), a few
+    // at a time. Stops if the Worker rate-limits.
+    func fillMissingGameDetails(_ items: [SyncedItem], batchSize: Int = 4) async {
+        let missing = items.filter {
+            $0.key.type == .game && $0.key.source == .igdb && cache[$0.key.recordName] == nil
+        }
+        let api = api
+        var start = 0
+        while start < missing.count {
+            let batch = missing[start..<min(start + batchSize, missing.count)].map(\.key)
+            start += batchSize
+            var limited = false
+            await withTaskGroup(of: Result<Media, Error>.self) { group in
+                for key in batch {
+                    group.addTask {
+                        do { return .success(try await api.details(for: key)) } catch { return .failure(error) }
+                    }
+                }
+                for await result in group {
+                    switch result {
+                    case .success(let media): remember(media)
+                    case .failure(VoidAPI.Failure.rateLimited): limited = true
+                    case .failure: continue
+                    }
+                }
+            }
+            if limited { return }
+        }
+    }
+
     // MARK: Stream
 
     // Streaming services for Playlist movies and shows, fetched once per session.

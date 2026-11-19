@@ -18,8 +18,10 @@ struct DealsView: View {
         var price: GamePrice
     }
 
+    private var playlistGames: [SyncedItem] { store.entries(.playlist, type: .game) }
+
     private var games: [Game] {
-        store.entries(.playlist, type: .game).map { item in
+        playlistGames.map { item in
             let media = store.media(for: item)
             return Game(media: media, appID: LibraryRules.steamAppID(media))
         }
@@ -88,14 +90,20 @@ struct DealsView: View {
         }
         .navigationTitle("Deals")
         .refreshable { await load() }
-        .task(id: appIDs) { await load() }
+        // Keyed by the Playlist, not the app IDs: filling in details changes the IDs, and
+        // load() already prices the ones it finds.
+        .task(id: playlistGames.map(\.key.recordName)) { await load() }
     }
 
     @MainActor private func load() async {
-        let ids = appIDs
-        guard !ids.isEmpty else { return }
+        guard !playlistGames.isEmpty else { return }
         loading = true
         defer { loading = false }
+        // Games imported or added on the website have no Steam app ID until their
+        // details are on this device.
+        await store.fillMissingGameDetails(playlistGames)
+        let ids = appIDs
+        guard !ids.isEmpty else { return }
         do {
             let api = store.api
             let found = try await api.steamPrices(ids)
