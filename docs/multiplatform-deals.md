@@ -1,6 +1,7 @@
 # Multi-platform deals investigation
 
-Status: research / proposed design, not implemented.
+Status: research / proposed design, not implemented. Updated with official API
+text supplied by the user and a concrete agent handoff below.
 
 ## Findings
 
@@ -115,8 +116,125 @@ failures. Verify old Steam clients still decode unchanged responses.
 Run Worker tests for provider/route changes, `swift test` for Core changes, root
 `npm test` for web changes, and an app build when a simulator is booted.
 
-## Next concrete step
+## Updated findings: official documentation supplied by the user
 
-Get the GG.deals API documentation visible in a browser (or supplied by their
-team) and resolve the provider gate above. Implementation can then start with
-one verified additional platform/provider without speculative endpoint work.
+The user supplied the Prices API documentation after the initial investigation.
+It documents these endpoints:
+
+- `/v1/prices/by-steam-app-id/` (`ids`)
+- `/v1/prices/by-steam-sub-id/` (`ids`)
+- `/v1/prices/by-steam-bundle-id/` (`ids`)
+- **`/v1/prices/by-slug/` (`slugs`)**, added 2026-10-14
+
+Each accepts a comma-separated list of up to 100 identifiers, the Worker-only
+`key`, and an optional `region`. Slug results are keyed by slug. Missing matches
+are `null`. All four return the same aggregate GamePrices shape already used by
+the Worker (title, URL, current/historical retail/keyshop prices, currency).
+
+The documented quota is **100 records per minute and 1,000 per hour**, shared by
+the API key. Every ID/slug counts, including invalid requests. A batch larger
+than the remaining allowance fails entirely with 429. Headers expose
+`x-ratelimit-limit`, `x-ratelimit-remaining`, and `x-ratelimit-reset`.
+
+This resolves the earlier documentation blocker for slug lookup. It does NOT
+confirm console coverage or individual platform-specific offers. No title search
+or IGDB-to-slug resolver appears in the supplied documentation. Steam Sub/Bundle
+support concerns packages, not additional platforms, and is outside this task.
+
+## Implementation handoff for the next agent
+
+### Goal and boundaries
+
+Add non-Steam game pricing using verified GG.deals slugs, retaining all existing
+Steam behavior. Do not add another provider yet, promise console support, guess
+slugs from titles or IGDB slugs, scrape GG.deals, or present aggregate prices as
+verified platform-specific offers. The earlier provider-independent offer model
+is a future direction, not a requirement to invent metadata this API lacks.
+
+No implementation changes have been made. The current Worker, iOS models and
+views still require Steam IDs. No verified non-Steam mapping has been collected.
+
+### First slice: Worker slug support and per-game caching
+
+1. Add `GET /api/prices/slug?slugs=foo,bar&region=us`, returning an array of
+   normalized aggregate quotes with `slug` instead of a required `steamAppId`.
+   Reuse price validation, lowest-price selection and GG.deals URL allowlisting.
+   Keep old Steam response shapes unchanged, including single-result `null` and
+   omitted unmatched IDs in batches. Prefer a shared aggregate normalizer with
+   separate Steam and slug identity wrappers.
+2. Validate slugs conservatively (lowercase ASCII letters/digits separated by
+   hyphens, bounded length), reject empty entries and unsupported query params,
+   deduplicate before quota accounting, and cap batches. Retaining the existing
+   Worker cap of 50 is fine; the upstream maximum of 100 is not a target.
+   Reject overlong request URLs using the existing global guard. Use the same
+   region allowlist as Steam and include the new route in price rate limiting.
+3. Cache individual records by lookup kind, identifier and region, not only by
+   the original request URL. Use internal cache keys without API keys or client
+   identifiers and construct CORS on the outgoing response. Both Steam single
+   and batch calls should share this cache. Fetch only misses in batches;
+   reconstruct the caller's normalized result order afterward. Cache confirmed
+   missing matches briefly; never turn failures into negative matches.
+   Do not cache an omitted or malformed upstream entry as a confirmed miss.
+4. Preserve upstream 429 handling and Retry-After. Existing native rate limiting
+   counts HTTP requests per Cloudflare location, not records globally, so it
+   **does not enforce the GG.deals quota**. Per-game caches are also local to a
+   Cloudflare location. Do not claim they guarantee the shared quota. For hard
+   enforcement, design a globally coordinated record-budget limiter (e.g. a
+   Durable Object) with minute/hour windows, or explicitly defer this and rely
+   on upstream 429 with clearly documented limitations. Do not make speculative
+   retries that consume more quota. Consider concurrent identical cache misses
+   and avoid claiming local in-flight deduplication works across locations.
+5. Unit-test validation, identity wrappers, no match, free price, malformed data,
+   ties and keyshops. Add mocked route/upstream/cache tests for overlapping
+   batches, single/batch cache reuse, regions, partial cached results, and 429
+   without successful-cache poisoning. No live API key is needed for tests.
+
+Relevant code: `worker/src/index.ts` (`normalizeGgDealsGamePrice`,
+`fetchSteamGamePrices`, `withCache`, price routes and rate-limit classification),
+`worker/src/index.test.ts`, and `worker/README.md`.
+
+### Second slice: verified identity mapping and iOS integration
+
+1. Establish an explicit server-side mapping from IGDB ID to verified GG.deals
+   slug. Each curated entry should retain the checked GG.deals URL and enough
+   provenance to review edition/base-game identity. Do not seed it with assumed
+   IDs or fabricated examples. A GG.deals URL actually supplied by metadata can
+   be a candidate, but it still needs identity verification. Ask the user for
+   initial non-Steam game URLs if necessary.
+2. Prefer exposing a verified `gg_deals_slug` on normalized IGDB game details,
+   or provide a server-resolved game-price endpoint. Pick and document one
+   approach; do not put a growing curated table in the iOS app. Cached IGDB
+   details may require a cache-version bump when mapping data changes.
+3. Introduce an explicit quote identity (Steam ID or GG.deals slug), keeping
+   legacy decoding intact. An aggregate quote has no verified platform/DRM
+   metadata. Add helpers that prefer Steam where available and use the verified
+   slug otherwise. Keep unsupported games distinguishable from network errors.
+4. Update `Void/Views/DealsView.swift` to index quotes by media identity rather
+   than assuming every priced game has a Steam ID. Update
+   `Void/Views/DetailsView.swift` to use the same resolution policy. Rename
+   “No Steam price” to an accurate unavailable-price label; retain retail/keyshop
+   disclosure and GG.deals links. Keep USD initially.
+5. Update `Void/Core/Models.swift`, `Void/Core/VoidAPI.swift` and
+   `Void/Core/LibraryRules.swift` as necessary, with Foundation-only Core tests
+   covering Steam compatibility and slug-backed games. Provider IDs and prices
+   remain metadata/cache, not CloudKit fields; no sync migration is required.
+6. Website deals do not currently exist. If web parity is requested, explicitly
+   scope API normalization and new UI rather than claiming an existing feature
+   was updated. If any CloudKit preference is added, follow the simultaneous
+   iOS/web schema requirements in `docs/sync-schema.md` instead.
+
+### Completion checks
+
+- Run `npm test` in `worker/` for Worker changes and a Wrangler deployment dry
+  run (`npx wrangler deploy --dry-run --config wrangler.toml`). Do not deploy.
+- Run `swift test` after Core changes. If changing the app, check
+  `xcrun simctl list devices booted` and rebuild for the booted simulator per
+  `AGENTS.md`.
+- Run root `npm test` if changing `web/`.
+- Commit completed changes with a clear message; do not push.
+- Leave the pre-existing untracked `Void.xcodeproj/xcshareddata/xcodecloud/`
+  directory alone.
+
+Suggested first implementation commit: Worker slug endpoint, shared per-game
+price caching, regression tests and endpoint documentation. Then wire iOS only
+once at least one real non-Steam mapping has been verified.
