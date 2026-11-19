@@ -44,11 +44,25 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showSearch) { SearchView() }
         .sheet(isPresented: $showSettings) { SettingsView() }
+        .task { await openSearchIfEmpty() }
         .onChange(of: store.enabledTypes) { _, types in
             if special == .deals && !types.contains(.game) { special = nil }
             if special == .stream && !types.contains(.movie) && !types.contains(.tv) { special = nil }
             if let current = filter, !types.contains(current) { filter = nil }
         }
+    }
+
+    // A new library starts on Search. A first sync may still be bringing one in from
+    // iCloud, so give it a few seconds before deciding the library is empty.
+    private func openSearchIfEmpty() async {
+        try? await Task.sleep(for: .milliseconds(500))
+        for _ in 0..<16 where store.sync.busy {
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+        let library = store.library
+        guard library.list(.playlist).isEmpty, library.list(.history).isEmpty,
+              details == nil, !showSettings else { return }
+        showSearch = true
     }
 
     // MARK: - Footer
