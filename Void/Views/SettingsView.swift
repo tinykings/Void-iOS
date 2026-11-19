@@ -6,7 +6,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var importing = false
     @State private var importResult: String?
-    @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = true
+    @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = DisplaySettings.showTitlesDefault
     @AppStorage(ReleaseNotifier.enabledKey) private var notify = false
     @State private var notificationsDenied = false
     @Environment(\.openURL) private var openURL

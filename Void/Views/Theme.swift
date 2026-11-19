@@ -35,6 +35,8 @@ extension Font {
 // Preferences kept on this device only, not synced.
 enum DisplaySettings {
     static let showTitlesKey = "showPosterTitles"
+    // Posters only, until turned on in Settings.
+    static let showTitlesDefault = false
 }
 
 // Screens pushed from any tab.

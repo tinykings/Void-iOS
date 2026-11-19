@@ -58,7 +58,7 @@ struct PosterCard: View {
     let media: Media
     var showsUpcoming = false
     @EnvironmentObject private var store: LibraryStore
-    @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = true
+    @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = DisplaySettings.showTitlesDefault
 
     // How long until a show's next episode ("In 5 days"), or until a movie or game
     // comes out; only within the 30 days that also move it to the top of the Playlist.
