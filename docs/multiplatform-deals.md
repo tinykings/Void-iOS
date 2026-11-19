@@ -158,6 +158,16 @@ relies on upstream 429 + `Retry-After`, as documented there. iOS models and view
 still require Steam IDs, and no verified non-Steam mapping has been collected,
 so the second slice hasn't started.
 
+### Optional personal GG.deals key (iOS, done 2026-11-19)
+
+Settings → GG.deals lets a user add their own GG.deals API key (checked with one
+lookup, stored in the iCloud Keychain, never in CloudKit). With a key, iOS calls
+GG.deals directly (`Void/Core/GamePrices.swift`) and spends only that key's
+allowance; without one, prices go through the Worker's shared key, and a shared
+429 tells the user they can add their own. Both paths share a per-device cache
+(1 hour; 10 minutes for no-price). Lookups are still by Steam App ID only; slug
+lookups wait for verified mappings (second slice).
+
 ### First slice: Worker slug support and per-game caching
 
 1. Add `GET /api/prices/slug?slugs=foo,bar&region=us`, returning an array of

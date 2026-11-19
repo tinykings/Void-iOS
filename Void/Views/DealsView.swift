@@ -74,7 +74,7 @@ struct DealsView: View {
                 }
             }
             if !unpriced.isEmpty && !loading {
-                Section("No Steam price") {
+                Section("No price") {
                     ForEach(unpriced, id: \.media.key) { game in
                         MediaLink(media: game.media) { Text(game.media.title) }
                             .listRowBackground(Color.voidSurface)
@@ -105,8 +105,7 @@ struct DealsView: View {
         let ids = appIDs
         guard !ids.isEmpty else { return }
         do {
-            let api = store.api
-            let found = try await api.steamPrices(ids)
+            let found = try await store.prices.steamPrices(ids)
             prices = Dictionary(found.map { ($0.steamAppId, $0) }, uniquingKeysWith: { a, _ in a })
             message = nil
         } catch {

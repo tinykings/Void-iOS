@@ -23,6 +23,34 @@ final class LibraryStore: ObservableObject {
     }
     // Providers per item, for Stream, kept for this session.
     @Published private(set) var providers: [String: [WatchProvider]] = [:]
+    // The user's own GG.deals key, if they added one in Settings.
+    @Published private(set) var ggDealsKey: String? = GGDealsKeyStore.load()
+    private let priceCache = PriceCache()
+
+    // Prices with the user's own key when there is one, else through the Worker.
+    var prices: GamePrices {
+        GamePrices(worker: api, ownKey: ggDealsKey.map { GGDealsAPI(key: $0) }, cache: priceCache)
+    }
+
+    // Checks the key with one lookup (Portal 2) before saving it. The lookup counts
+    // against that key's allowance only.
+    func setGGDealsKey(_ value: String) async throws {
+        guard let key = GGDealsAPI.cleanKey(value) else { throw GGDealsAPI.Failure.invalidKey("That doesn't look like a key.") }
+        _ = try await GGDealsAPI(key: key).steamPrices([620])
+        guard GGDealsKeyStore.save(key) else { throw KeyNotSaved() }
+        ggDealsKey = key
+        await priceCache.removeAll()
+    }
+
+    func removeGGDealsKey() async {
+        GGDealsKeyStore.delete()
+        ggDealsKey = nil
+        await priceCache.removeAll()
+    }
+
+    private struct KeyNotSaved: LocalizedError {
+        var errorDescription: String? { "The key couldn't be saved to the Keychain." }
+    }
 
     private var forward: AnyCancellable?
     private static let enabledTypesKey = "enabledMediaTypes"

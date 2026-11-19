@@ -6,6 +6,9 @@ struct SettingsView: View {
     @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = DisplaySettings.showTitlesDefault
     @AppStorage(ReleaseNotifier.enabledKey) private var notify = false
     @State private var notificationsDenied = false
+    @State private var keyDraft = ""
+    @State private var keyMessage: String?
+    @State private var checkingKey = false
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -51,6 +54,8 @@ struct SettingsView: View {
                 } footer: {
                     Text("Names under the posters on your Playlist and History. Search always shows them.")
                 }
+
+                if store.enabledTypes.contains(.game) { ggDealsSection }
 
                 Section {
                     Toggle("New Episodes and Releases", isOn: $notify)
@@ -117,6 +122,57 @@ struct SettingsView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
             .voidScreen()
+        }
+    }
+
+    // Optional: the user's own GG.deals key, so their prices don't share the app's
+    // allowance with everyone else.
+    private var ggDealsSection: some View {
+        Section {
+            if store.ggDealsKey != nil {
+                LabeledContent("API Key", value: "Added")
+                Button("Remove Key", role: .destructive) {
+                    Task { await store.removeGGDealsKey(); keyMessage = nil }
+                }
+            } else {
+                SecureField("API Key", text: $keyDraft)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .textContentType(.password)
+                Button {
+                    Task { await saveKey() }
+                } label: {
+                    HStack {
+                        Text("Add Key")
+                        if checkingKey { Spacer(); ProgressView() }
+                    }
+                }
+                .disabled(checkingKey || keyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Link(destination: URL(string: "https://gg.deals/api/")!) {
+                    Label("Get a Key from GG.deals", systemImage: "arrow.up.right")
+                }
+            }
+            if let keyMessage {
+                Text(keyMessage).font(.footnote).foregroundStyle(Color.voidSilver)
+            }
+        } header: {
+            Text("GG.deals")
+        } footer: {
+            Text(store.ggDealsKey != nil
+                 ? "Game prices come straight from GG.deals with your key. It's kept in your iCloud Keychain."
+                 : "Optional. Without a key, prices use a key shared by everyone using [void], which can get busy. Sign in at GG.deals to get your own free key.")
+        }
+    }
+
+    @MainActor private func saveKey() async {
+        checkingKey = true
+        defer { checkingKey = false }
+        do {
+            try await store.setGGDealsKey(keyDraft)
+            keyDraft = ""
+            keyMessage = nil
+        } catch {
+            keyMessage = error.localizedDescription
         }
     }
 }

@@ -11,6 +11,7 @@ struct DetailsView: View {
     @State private var providers: [WatchProvider]?
     @State private var contentRating: String?
     @State private var price: GamePrice?
+    @State private var priceError: String?
     @State private var failed = false
     @State private var loading = false
     @State private var playing: Video?
@@ -81,7 +82,15 @@ struct DetailsView: View {
             failed = true
         }
         if isGame {
-            if let appID = LibraryRules.steamAppID(shown) { price = try? await api.steamPrice(appID) }
+            if let appID = LibraryRules.steamAppID(shown) {
+                do {
+                    price = try await store.prices.steamPrice(appID)
+                    priceError = nil
+                } catch let error as GamePrices.Failure {
+                    // Busy or a bad key is worth saying; other failures just leave no price.
+                    priceError = error.localizedDescription
+                } catch {}
+            }
         } else {
             async let credits = try? api.credits(key.type, id: key.id)
             async let streams = try? api.streamingProviders(key.type, id: key.id)
@@ -252,6 +261,11 @@ struct DetailsView: View {
                     .padding(12)
                     .background(Color.voidSurface, in: RoundedRectangle(cornerRadius: 8))
                 }
+            }
+        } else if let priceError {
+            VStack(alignment: .leading, spacing: 8) {
+                sectionTitle("Best price")
+                Text(priceError).font(.footnote).foregroundStyle(Color.voidSilver)
             }
         }
     }

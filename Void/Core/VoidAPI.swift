@@ -4,7 +4,8 @@ import FoundationNetworking
 #endif
 
 // The [void] API Worker (worker/): TMDB through /api/tmdb, IGDB games, and GG.deals
-// Steam prices. The app holds no API keys; the Worker does.
+// Steam prices. The app holds no shared API keys; the Worker does. (A user's own
+// GG.deals key, if they add one, is used directly: see GamePrices.)
 struct VoidAPI: Sendable {
     enum Failure: Error, LocalizedError, Equatable {
         case notConfigured
