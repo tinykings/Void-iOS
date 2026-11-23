@@ -67,6 +67,13 @@ struct VoidAPI: Sendable {
         return page.results.compactMap(\.value).filter { $0.mediaType != .game }
     }
 
+    func recommendations(for key: MediaKey) async throws -> [Media] {
+        guard key.type != .game else { return [] }
+        let page = try await get("api/tmdb/\(key.type.rawValue)/\(key.id)/recommendations",
+                                 as: Page<Media>.self, mediaType: key.type)
+        return page.results.compactMap(\.value)
+    }
+
     func trending() async throws -> [Media] {
         let page = try await get("api/tmdb/trending/all/week", as: Page<Media>.self)
         return page.results.compactMap(\.value).filter { $0.mediaType != .game }

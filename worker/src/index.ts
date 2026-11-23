@@ -1075,6 +1075,7 @@ const TMDB_ROUTES: { pattern: RegExp; params: string[] }[] = [
   { pattern: /^\/discover\/tv$/, params: ['first_air_date.gte', 'first_air_date.lte', 'sort_by'] },
   { pattern: /^\/(movie|tv)\/\d{1,10}$/, params: ['append_to_response', 'include_image_language'] },
   { pattern: /^\/(movie|tv)\/\d{1,10}\/(credits|watch\/providers)$/, params: [] },
+  { pattern: /^\/(movie|tv)\/\d{1,10}\/recommendations$/, params: [] },
   { pattern: /^\/movie\/\d{1,10}\/release_dates$/, params: [] },
   { pattern: /^\/tv\/\d{1,10}\/content_ratings$/, params: [] },
   { pattern: /^\/tv\/\d{1,10}\/season\/\d{1,4}$/, params: [] },

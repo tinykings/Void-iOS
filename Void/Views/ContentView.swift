@@ -1,7 +1,7 @@
 import SwiftUI
 
 // One screen with a floating footer, like the webapp: a filter menu (type, Favorites,
-// Stream, Deals, Settings), a History/Playlist switch and Search.
+// Recommendations, Stream, Deals, Settings), a History/Playlist switch and Search.
 struct ContentView: View {
     @EnvironmentObject private var store: LibraryStore
     @State private var list = ListState.playlist
@@ -13,12 +13,13 @@ struct ContentView: View {
     @State private var details: Media?
     @Namespace private var segment
 
-    enum Special { case stream, deals }
+    enum Special { case stream, deals, recommendations }
 
     var body: some View {
         NavigationStack {
             Group {
                 switch special {
+                case .recommendations: RecommendationsView()
                 case .stream: StreamView()
                 case .deals: DealsView()
                 case nil: LibraryView(list: favoritesOnly ? .history : list, filter: filter, favoritesOnly: favoritesOnly)
@@ -47,7 +48,7 @@ struct ContentView: View {
         .task { await openSearchIfEmpty() }
         .onChange(of: store.enabledTypes) { _, types in
             if special == .deals && !types.contains(.game) { special = nil }
-            if special == .stream && !types.contains(.movie) && !types.contains(.tv) { special = nil }
+            if (special == .stream || special == .recommendations) && !types.contains(.movie) && !types.contains(.tv) { special = nil }
             if let current = filter, !types.contains(current) { filter = nil }
         }
     }
@@ -74,6 +75,7 @@ struct ContentView: View {
 
     private var status: String {
         switch special {
+        case .recommendations: return "Recommendations · Favorites"
         case .stream: return "Stream · Playlist"
         case .deals: return "Deals · Playlist"
         case nil:
@@ -121,6 +123,7 @@ struct ContentView: View {
 
     private var filterIcon: String {
         switch special {
+        case .recommendations: return "sparkles"
         case .stream: return "antenna.radiowaves.left.and.right"
         case .deals: return "tag"
         case nil:
@@ -144,13 +147,13 @@ struct ContentView: View {
             .contentShape(Circle())
     }
 
-    // While Stream, Deals or Favorites is showing, the button clears it; otherwise it
+    // While a special view or Favorites is showing, the button clears it; otherwise it
     // opens the menu.
     @ViewBuilder private var filterButton: some View {
         if clearsOnTap {
             Button { change { special = nil; favoritesOnly = false } } label: { filterLabel }
                 .buttonStyle(.plain)
-                .accessibilityLabel(special == .stream ? "Clear Stream view" : special == .deals ? "Clear Deals view" : "Clear Favorites view")
+                .accessibilityLabel(special == .recommendations ? "Clear Recommendations view" : special == .stream ? "Clear Stream view" : special == .deals ? "Clear Deals view" : "Clear Favorites view")
         } else {
             Menu {
                 if types.count > 1 {
@@ -164,6 +167,9 @@ struct ContentView: View {
                 }
                 Section {
                     Button { change { favoritesOnly = true } } label: { Label("Favorites", systemImage: "heart") }
+                    if showsStream {
+                        Button { change { special = .recommendations } } label: { Label("Recommendations", systemImage: "sparkles") }
+                    }
                 }
                 if showsStream || showsDeals {
                     Section {

@@ -38,6 +38,10 @@ test('normalizeGgDealsGamePrice handles missing games and prefers retail on ties
 test('tmdbProxyPath forwards only known endpoints and parameters', async () => {
   const { tmdbProxyPath } = await import('./index');
   const params = (value: string) => new URLSearchParams(value);
+  assert.equal(tmdbProxyPath('/api/tmdb/movie/550/recommendations', params('')), 'https://api.themoviedb.org/3/movie/550/recommendations');
+  assert.equal(tmdbProxyPath('/api/tmdb/tv/1399/recommendations', params('')), 'https://api.themoviedb.org/3/tv/1399/recommendations');
+  assert.deepEqual(tmdbProxyPath('/api/tmdb/game/1/recommendations', params('')), { error: 'Unsupported TMDB endpoint' });
+  assert.deepEqual(tmdbProxyPath('/api/tmdb/movie/550/recommendations', params('query=test')), { error: 'Unsupported query parameter' });
   assert.equal(tmdbProxyPath('/api/tmdb/search/multi', params('query=dune')), 'https://api.themoviedb.org/3/search/multi?query=dune');
   assert.equal(tmdbProxyPath('/api/tmdb/tv/1399', params('append_to_response=videos,images&include_image_language=en,null')),
     'https://api.themoviedb.org/3/tv/1399?append_to_response=videos%2Cimages&include_image_language=en%2Cnull');
