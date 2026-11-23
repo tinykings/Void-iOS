@@ -88,4 +88,20 @@ final class CodecTests: XCTestCase {
         """
         XCTAssertEqual(try JSONDecoder().decode(PersonCredits.self, from: Data(person.utf8)).cast.map(\.title), ["A", "C"])
     }
+
+    func testPersonCreditsExcludeTalkShowsOnly() throws {
+        let json = """
+        {"cast":[
+          {"id":1,"media_type":"tv","name":"The Tonight Show","genre_ids":[35,10767]},
+          {"id":2,"media_type":"tv","name":"Late Night","genre_ids":[10767]},
+          {"id":3,"media_type":"tv","name":"Reality show","genre_ids":[10764]},
+          {"id":4,"media_type":"movie","title":"Movie","genre_ids":[35]},
+          {"id":5,"media_type":"tv","name":"Drama","genre_ids":[18]},
+          {"id":6,"media_type":"tv","name":"Unknown genres"},
+          {"id":7,"media_type":"person","name":"Invalid credit"}
+        ]}
+        """
+        let credits = try JSONDecoder().decode(PersonCredits.self, from: Data(json.utf8))
+        XCTAssertEqual(credits.cast.map(\.id), [3, 4, 5, 6])
+    }
 }

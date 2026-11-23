@@ -220,8 +220,23 @@ struct PersonCredits: Decodable, Sendable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         // Combined credits mix movies and shows; anything else is skipped.
-        let items = c.lenient([Failable<Media>].self, .cast) ?? []
-        cast = items.compactMap(\.value)
+        let items = c.lenient([Failable<Credit>].self, .cast) ?? []
+        cast = items.compactMap(\.value).filter { !$0.isTalkShow }.map(\.media)
+    }
+
+    private struct Credit: Decodable {
+        var media: Media
+        var isTalkShow: Bool
+
+        init(from decoder: Decoder) throws {
+            media = try Media(from: decoder)
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            let genreIDs = c.lenient([Int].self, .genreIDs) ?? []
+            // TMDB's TV Talk genre; keep Reality and all movie credits.
+            isTalkShow = media.mediaType == .tv && genreIDs.contains(10767)
+        }
+
+        enum CodingKeys: String, CodingKey { case genreIDs = "genre_ids" }
     }
 
     enum CodingKeys: String, CodingKey { case cast }
