@@ -1,95 +1,93 @@
 import SwiftUI
 
-// TMDB recommendations remain grouped by the favorite that suggested them.
 struct RecommendationsView: View {
     @EnvironmentObject private var store: LibraryStore
-    @State private var groups: [Group] = []
+    @State private var recommendations: [Media] = []
     @State private var loading = false
     @State private var failed = false
     @State private var requestID = UUID()
 
-    private struct Group: Identifiable {
-        let seed: SyncedItem
-        let titles: [Media]
-        var id: MediaKey { seed.key }
+    private var favorites: [MediaKey] {
+        store.entries(.history, type: nil)
+            .filter { $0.isFavorite && $0.key.type != .game }
+            .map(\.key)
+            .sorted()
     }
 
-    private var favorites: [SyncedItem] {
-        store.entries(.history, type: nil).filter { $0.isFavorite && $0.key.type != .game }
+    private var libraryKeys: Set<MediaKey> {
+        Set((store.library.list(.history) + store.library.list(.playlist)).map(\.key))
     }
 
-    private var visibleGroups: [Group] {
-        var seen = Set((store.library.list(.history) + store.library.list(.playlist)).map(\.key))
-        return groups.compactMap { group in
-            let titles = group.titles.filter { seen.insert($0.key).inserted }
-            return titles.isEmpty ? nil : Group(seed: group.seed, titles: titles)
-        }
+    private var visibleRecommendations: [Media] {
+        let saved = libraryKeys
+        return recommendations.filter { !saved.contains($0.key) }
     }
 
     var body: some View {
-        List {
-            Section {
-                Text("Movies and shows inspired by your Favorites, excluding titles already in your library. Game recommendations aren't available yet.")
-                    .font(.caption).foregroundStyle(Color.voidSilver)
-            }.listRowBackground(Color.clear)
-
-            if favorites.isEmpty {
-                Text("Favorite movies or shows in History to get recommendations.")
-                    .foregroundStyle(Color.voidSilver).listRowBackground(Color.voidSurface)
-            }
-            ForEach(visibleGroups) { group in
-                Section("Because you favorited \(group.seed.title)") {
-                    ForEach(group.titles, id: \.key) { media in
-                        MediaLink(media: media) {
-                            HStack(spacing: 12) {
-                                PosterImage(path: media.posterPath, size: "w185")
-                                    .frame(width: 36, height: 54)
-                                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(media.title).font(.subheadline.weight(.semibold))
-                                    Text([media.mediaType.singular, media.year].compactMap { $0 }.joined(separator: " · "))
-                                        .font(.voidLabel).foregroundStyle(Color.voidSilver)
-                                }
-                            }
-                        }.listRowBackground(Color.voidSurface)
+        let favorites = favorites
+        let shown = visibleRecommendations
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if favorites.isEmpty {
+                    Text("Favorite movies or shows in History to get recommendations.")
+                        .foregroundStyle(Color.voidSilver)
+                }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10, alignment: .top)], spacing: 14) {
+                    ForEach(shown, id: \.key) { media in
+                        SearchResultCard(media: media)
                     }
                 }
-            }
-            if loading {
-                ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear)
-            } else if !favorites.isEmpty && visibleGroups.isEmpty && !failed {
-                Text("No new recommendations right now. Try adding more Favorites.")
-                    .foregroundStyle(Color.voidSilver).listRowBackground(Color.clear)
-            }
-            if failed {
-                Section {
+                if loading {
+                    ProgressView().frame(maxWidth: .infinity).padding()
+                } else if !favorites.isEmpty && shown.isEmpty && !failed {
+                    Text("No new recommendations right now. Try adding more Favorites.")
+                        .foregroundStyle(Color.voidSilver)
+                }
+                if failed {
                     Text("Some recommendations couldn't load.").foregroundStyle(Color.voidSilver)
-                    Button("Try again") { Task { await load() } }.disabled(loading)
-                }.listRowBackground(Color.voidSurface)
+                    Button("Try again") { Task { await load(favorites) } }.disabled(loading)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
         .navigationTitle("Recommendations")
-        .task(id: favorites.map(\.key)) { await load() }
-        .refreshable { await load() }
+        .task(id: favorites) { await load(favorites) }
+        .refreshable { await load(favorites) }
     }
 
-    @MainActor private func load() async {
+    @MainActor private func load(_ favorites: [MediaKey]) async {
+        guard !Task.isCancelled else { return }
         let request = UUID()
         requestID = request
-        loading = true
+        loading = !favorites.isEmpty
         failed = false
-        groups = []
-        for seed in favorites {
+        recommendations = []
+        defer {
+            if requestID == request { loading = false }
+        }
+
+        var selection: [Media] = []
+        var seen = Set<MediaKey>()
+        for seed in favorites.shuffled() {
             do {
-                let titles = try await store.api.recommendations(for: seed.key)
+                let titles = try await store.api.recommendations(for: seed)
                 try Task.checkCancellation()
                 guard requestID == request else { return }
-                groups.append(Group(seed: seed, titles: titles))
+                let saved = libraryKeys
+                var picked = 0
+                for media in titles.shuffled() where !saved.contains(media.key) && seen.insert(media.key).inserted {
+                    // Mix new picks into the grid while keeping earlier picks in order.
+                    selection.insert(media, at: Int.random(in: 0...selection.count))
+                    picked += 1
+                    if picked == 5 { break }
+                }
+                recommendations = selection
             } catch {
                 if Task.isCancelled || requestID != request { return }
                 failed = true
             }
         }
-        loading = false
     }
 }
