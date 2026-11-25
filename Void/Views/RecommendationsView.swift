@@ -71,6 +71,7 @@ struct RecommendationsView: View {
         var selection: [Media] = []
         var seen = Set<MediaKey>()
         for seed in favorites.shuffled() {
+            guard selection.count < 50 else { break }
             do {
                 let titles = try await store.api.recommendations(for: seed)
                 try Task.checkCancellation()
@@ -78,12 +79,12 @@ struct RecommendationsView: View {
                 let saved = libraryKeys
                 var picked = 0
                 for media in titles.shuffled() where !saved.contains(media.key) && seen.insert(media.key).inserted {
-                    // Mix new picks into the grid while keeping earlier picks in order.
-                    selection.insert(media, at: Int.random(in: 0...selection.count))
+                    selection.append(media)
                     picked += 1
-                    if picked == 5 { break }
+                    if picked == 5 || selection.count == 50 { break }
                 }
-                recommendations = selection
+                // Random picks for variety, then order by TMDB popularity.
+                recommendations = selection.sorted { $0.popularity > $1.popularity }
             } catch {
                 if Task.isCancelled || requestID != request { return }
                 failed = true

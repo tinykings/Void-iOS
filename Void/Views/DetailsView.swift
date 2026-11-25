@@ -628,10 +628,10 @@ struct PersonView: View {
             async let details = try? api.person(id)
             async let cast = try? api.personCredits(id)
             person = await details
-            // Most popular first, one entry per title.
+            // One entry per title with a poster; movies/shows interleaved by popularity (see PersonCredits.curated).
             var seen = Set<MediaKey>()
-            credits = (await cast ?? []).filter { $0.posterPath != nil && seen.insert($0.key).inserted }
-                .sorted { $0.popularity > $1.popularity }
+            let unique = (await cast ?? []).filter { $0.posterPath != nil && seen.insert($0.key).inserted }
+            credits = PersonCredits.curated(unique)
         }
     }
 }

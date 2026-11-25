@@ -89,12 +89,12 @@ final class CodecTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(PersonCredits.self, from: Data(person.utf8)).cast.map(\.title), ["A", "C"])
     }
 
-    func testPersonCreditsExcludeTalkShowsOnly() throws {
+    func testPersonCreditsExcludeNewsRealityAndTalk() throws {
         let json = """
         {"cast":[
           {"id":1,"media_type":"tv","name":"The Tonight Show","genre_ids":[35,10767]},
-          {"id":2,"media_type":"tv","name":"Late Night","genre_ids":[10767]},
-          {"id":3,"media_type":"tv","name":"Reality show","genre_ids":[10764]},
+          {"id":2,"media_type":"tv","name":"The Daily Show","genre_ids":[35,10763]},
+          {"id":3,"media_type":"tv","name":"Jeopardy","genre_ids":[10764,10751]},
           {"id":4,"media_type":"movie","title":"Movie","genre_ids":[35]},
           {"id":5,"media_type":"tv","name":"Drama","genre_ids":[18]},
           {"id":6,"media_type":"tv","name":"Unknown genres"},
@@ -102,6 +102,44 @@ final class CodecTests: XCTestCase {
         ]}
         """
         let credits = try JSONDecoder().decode(PersonCredits.self, from: Data(json.utf8))
-        XCTAssertEqual(credits.cast.map(\.id), [3, 4, 5, 6])
+        XCTAssertEqual(credits.cast.map(\.id), [4, 5, 6])
+    }
+
+    func testPersonCreditsCuratedInterleavesMoviesAndShows() {
+        func item(_ id: Int, _ type: MediaType, popularity: Double) -> Media {
+            var media = Media(id: id, mediaType: type, title: "\(id)")
+            media.popularity = popularity
+            return media
+        }
+        // Movies M9..M0 (pop 9..0), shows S9..S0 (pop 9..0).
+        let movies = (0..<10).map { item(100 + $0, .movie, popularity: Double($0)) }
+        let shows = (0..<10).map { item(200 + $0, .tv, popularity: Double($0)) }
+        let curated = PersonCredits.curated(movies + shows, limit: 30)
+        // 6 top movies, 6 top shows, next 6 movies, next 6 shows, then mix (4 left → top by pop).
+        XCTAssertEqual(curated.map(\.id), [
+            109, 108, 107, 106, 105, 104,
+            209, 208, 207, 206, 205, 204,
+            103, 102, 101, 100,
+            203, 202, 201, 200,
+        ])
+        XCTAssertEqual(curated.count, 20)
+    }
+
+    func testPersonCreditsCuratedCapsAtLimitWithMixedRemainder() {
+        func item(_ id: Int, _ type: MediaType, popularity: Double) -> Media {
+            var media = Media(id: id, mediaType: type, title: "\(id)")
+            media.popularity = popularity
+            return media
+        }
+        let movies = (0..<15).map { item(100 + $0, .movie, popularity: Double(100 + $0)) }
+        let shows = (0..<15).map { item(200 + $0, .tv, popularity: Double(50 + $0)) }
+        let curated = PersonCredits.curated(movies + shows, limit: 30)
+        XCTAssertEqual(curated.count, 30)
+        XCTAssertEqual(curated.prefix(6).map(\.mediaType), Array(repeating: .movie, count: 6))
+        XCTAssertEqual(curated.dropFirst(6).prefix(6).map(\.mediaType), Array(repeating: .tv, count: 6))
+        XCTAssertEqual(curated.dropFirst(12).prefix(6).map(\.mediaType), Array(repeating: .movie, count: 6))
+        XCTAssertEqual(curated.dropFirst(18).prefix(6).map(\.mediaType), Array(repeating: .tv, count: 6))
+        // Remainder: leftover movies (pop 102..100) beat leftover shows (pop 52..50).
+        XCTAssertEqual(curated.suffix(6).map(\.id), [102, 101, 100, 202, 201, 200])
     }
 }

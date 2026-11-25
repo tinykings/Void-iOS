@@ -217,23 +217,54 @@ struct PersonDetails: Decodable, Sendable {
 struct PersonCredits: Decodable, Sendable {
     var cast: [Media]
 
+    /// TMDB TV genres that clutter filmography: News, Reality (game shows), Talk.
+    static let hiddenTVGenres: Set<Int> = [10763, 10764, 10767]
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         // Combined credits mix movies and shows; anything else is skipped.
         let items = c.lenient([Failable<Credit>].self, .cast) ?? []
-        cast = items.compactMap(\.value).filter { !$0.isTalkShow }.map(\.media)
+        cast = items.compactMap(\.value).filter { !$0.isHidden }.map(\.media)
+    }
+
+    /// Poster grid order: 6 movies, 6 shows, 6 movies, 6 shows, then popularity mix up to `limit`.
+    static func curated(_ items: [Media], limit: Int = 30) -> [Media] {
+        let movies = items.filter { $0.mediaType == .movie }.sorted { $0.popularity > $1.popularity }
+        let shows = items.filter { $0.mediaType == .tv }.sorted { $0.popularity > $1.popularity }
+        var movieIndex = 0
+        var showIndex = 0
+        var result: [Media] = []
+
+        func take(_ pool: [Media], index: inout Int, count: Int) {
+            let end = min(index + count, pool.count)
+            guard index < end else { return }
+            result.append(contentsOf: pool[index..<end])
+            index = end
+        }
+
+        take(movies, index: &movieIndex, count: 6)
+        take(shows, index: &showIndex, count: 6)
+        take(movies, index: &movieIndex, count: 6)
+        take(shows, index: &showIndex, count: 6)
+
+        let remaining = limit - result.count
+        guard remaining > 0 else { return Array(result.prefix(limit)) }
+        var rest = Array(movies[movieIndex...]) + Array(shows[showIndex...])
+        rest.sort { $0.popularity > $1.popularity }
+        result.append(contentsOf: rest.prefix(remaining))
+        return result
     }
 
     private struct Credit: Decodable {
         var media: Media
-        var isTalkShow: Bool
+        var isHidden: Bool
 
         init(from decoder: Decoder) throws {
             media = try Media(from: decoder)
             let c = try decoder.container(keyedBy: CodingKeys.self)
             let genreIDs = c.lenient([Int].self, .genreIDs) ?? []
-            // TMDB's TV Talk genre; keep Reality and all movie credits.
-            isTalkShow = media.mediaType == .tv && genreIDs.contains(10767)
+            // Movies always stay; hide News / Reality / Talk TV (Daily Show, Jeopardy, late night).
+            isHidden = media.mediaType == .tv && genreIDs.contains(where: { PersonCredits.hiddenTVGenres.contains($0) })
         }
 
         enum CodingKeys: String, CodingKey { case genreIDs = "genre_ids" }
