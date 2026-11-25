@@ -146,7 +146,7 @@ struct SearchResultCard: View {
                 Text(media.title).font(.caption.weight(.semibold)).lineLimit(2)
                 if let recommendationSource {
                     Text(recommendationSource)
-                        .font(.voidLabel).foregroundStyle(Color.voidAmber)
+                        .font(.voidLabel).foregroundStyle(Color.voidAmber.opacity(0.6))
                 }
                 Text([media.mediaType.singular, daysUntilRelease.map(DateText.countdown) ?? media.year]
                         .compactMap { $0 }.joined(separator: " · ").uppercased())
