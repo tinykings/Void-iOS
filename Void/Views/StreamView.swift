@@ -22,58 +22,52 @@ struct StreamView: View {
     }
 
     var body: some View {
-        List {
-            if items.isEmpty {
-                Text("Add movies and shows to your Playlist to see where they stream.")
-                    .foregroundStyle(Color.voidSilver).listRowBackground(Color.voidSurface)
-            }
-            ForEach(groups, id: \.provider.providerID) { group in
-                Section {
-                    ForEach(group.items, id: \.key) { item in
-                        row(item)
-                    }
-                } header: {
-                    HStack(spacing: 10) {
-                        ProviderLogo(provider: group.provider, size: 28)
-                        Text(group.provider.providerName).font(.headline).foregroundStyle(.primary).textCase(nil)
-                        Spacer()
-                        Text("\(group.items.count) of \(items.count)").font(.voidReadout).foregroundStyle(Color.voidCyan)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                if items.isEmpty {
+                    Text("Add movies and shows to your Playlist to see where they stream.")
+                        .foregroundStyle(Color.voidSilver)
+                }
+                ForEach(groups, id: \.provider.providerID) { group in
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 10) {
+                            ProviderLogo(provider: group.provider, size: 28)
+                            Text(group.provider.providerName).font(.headline).foregroundStyle(.primary)
+                            Spacer()
+                            Text("\(group.items.count) of \(items.count)").font(.voidReadout).foregroundStyle(Color.voidCyan)
+                        }
+                        .accessibilityAddTraits(.isHeader)
+                        posters(group.items)
                     }
                 }
-            }
-            if !notStreaming.isEmpty {
-                Section("Not on a subscription service") {
-                    ForEach(notStreaming, id: \.key) { item in row(item) }
+                if !notStreaming.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Not on a subscription service")
+                            .font(.headline)
+                            .accessibilityAddTraits(.isHeader)
+                        posters(notStreaming)
+                    }
                 }
-            }
-            if loading {
-                ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear)
-            }
-            Section {
+                if loading {
+                    ProgressView().frame(maxWidth: .infinity)
+                }
                 Text("US streaming data from JustWatch, through TMDB. Tap a title for details.")
-                    .font(.caption2).foregroundStyle(Color.voidSilver).listRowBackground(Color.clear)
+                    .font(.caption2).foregroundStyle(Color.voidSilver)
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
         .navigationTitle("Stream")
         .refreshable { await load() }
         .task(id: items.map(\.key)) { await load() }
     }
 
-    private func row(_ item: SyncedItem) -> some View {
-        let media = store.media(for: item)
-        return MediaLink(media: media) {
-            HStack(spacing: 12) {
-                PosterImage(path: media.posterPath ?? item.image, size: "w185")
-                    .frame(width: 36, height: 54)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(media.title).font(.subheadline.weight(.semibold))
-                    Text([media.mediaType.singular, media.year].compactMap { $0 }.joined(separator: " · ").uppercased())
-                        .font(.voidLabel).foregroundStyle(Color.voidSilver)
-                }
+    private func posters(_ items: [SyncedItem]) -> some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10, alignment: .top)], spacing: 14) {
+            ForEach(items, id: \.key) { item in
+                PosterCard(item: item, media: store.media(for: item), showsUpcoming: true)
             }
         }
-        .listRowBackground(Color.voidSurface)
     }
 
     @MainActor private func load() async {
