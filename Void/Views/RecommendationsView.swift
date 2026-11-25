@@ -3,6 +3,7 @@ import SwiftUI
 struct RecommendationsView: View {
     @EnvironmentObject private var store: LibraryStore
     @State private var recommendations: [Media] = []
+    @State private var sourceTitles: [MediaKey: String] = [:]
     @State private var loading = false
     @State private var failed = false
     @State private var requestID = UUID()
@@ -34,7 +35,7 @@ struct RecommendationsView: View {
                 }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10, alignment: .top)], spacing: 14) {
                     ForEach(shown, id: \.key) { media in
-                        SearchResultCard(media: media)
+                        SearchResultCard(media: media, recommendationSource: sourceTitles[media.key])
                     }
                 }
                 if loading {
@@ -64,6 +65,7 @@ struct RecommendationsView: View {
         loading = !favorites.isEmpty
         failed = false
         recommendations = []
+        sourceTitles = [:]
         defer {
             if requestID == request { loading = false }
         }
@@ -80,6 +82,7 @@ struct RecommendationsView: View {
                 var picked = 0
                 for media in titles.shuffled() where !saved.contains(media.key) && seen.insert(media.key).inserted {
                     selection.append(media)
+                    sourceTitles[media.key] = store.item(seed)?.title
                     picked += 1
                     if picked == 5 || selection.count == 50 { break }
                 }

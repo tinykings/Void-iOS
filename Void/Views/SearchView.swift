@@ -114,6 +114,7 @@ struct SearchResultCard: View {
     let media: Media
     // Set for trending titles not out yet: an amber border and a countdown.
     var daysUntilRelease: Int? = nil
+    var recommendationSource: String? = nil
     @EnvironmentObject private var store: LibraryStore
 
     var body: some View {
@@ -143,6 +144,10 @@ struct SearchResultCard: View {
                         }
                     }
                 Text(media.title).font(.caption.weight(.semibold)).lineLimit(2)
+                if let recommendationSource {
+                    Text("Because you liked \(recommendationSource)")
+                        .font(.voidLabel).foregroundStyle(Color.voidAmber)
+                }
                 Text([media.mediaType.singular, daysUntilRelease.map(DateText.countdown) ?? media.year]
                         .compactMap { $0 }.joined(separator: " · ").uppercased())
                     .font(.voidLabel).foregroundStyle(daysUntilRelease != nil ? Color.voidAmber : Color.voidSilver)
