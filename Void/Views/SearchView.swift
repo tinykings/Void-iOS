@@ -145,7 +145,7 @@ struct SearchResultCard: View {
                     }
                 Text(media.title).font(.caption.weight(.semibold)).lineLimit(2)
                 if let recommendationSource {
-                    Text("Because you liked \(recommendationSource)")
+                    Text(recommendationSource)
                         .font(.voidLabel).foregroundStyle(Color.voidAmber)
                 }
                 Text([media.mediaType.singular, daysUntilRelease.map(DateText.countdown) ?? media.year]
