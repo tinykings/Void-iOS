@@ -11,7 +11,6 @@ struct ContentView: View {
     @State private var showSearch = false
     @State private var showSettings = false
     @State private var details: Media?
-    @Namespace private var segment
 
     enum Special { case stream, deals, recommendations }
 
@@ -25,7 +24,15 @@ struct ContentView: View {
                 case nil: LibraryView(list: favoritesOnly ? .history : list, filter: filter, favoritesOnly: favoritesOnly)
                 }
             }
-            .safeAreaInset(edge: .bottom) { footer }
+            .safeAreaInset(edge: .bottom) {
+                LibraryFooter(list: $list, filter: $filter, favoritesOnly: $favoritesOnly,
+                              special: $special, showSearch: $showSearch,
+                              showSettings: $showSettings, enabledTypes: store.enabledTypes,
+                              selection: .init(list: list, filter: filter,
+                                               favoritesOnly: favoritesOnly, special: special,
+                                               showSearch: showSearch, showSettings: showSettings))
+                    .equatable()
+            }
             // The floating label over the footer names the view; the title only labels
             // the back button on pushed screens.
             .toolbar(.hidden, for: .navigationBar)
@@ -66,11 +73,40 @@ struct ContentView: View {
         showSearch = true
     }
 
+}
+
+// Only footer inputs should rebuild the menu. Library metadata and sync progress
+// publish frequently while loading and must not refresh an already presented menu.
+private struct LibraryFooter: View, Equatable {
+    @Binding var list: ListState
+    @Binding var filter: MediaType?
+    @Binding var favoritesOnly: Bool
+    @Binding var special: ContentView.Special?
+    @Binding var showSearch: Bool
+    @Binding var showSettings: Bool
+    let enabledTypes: Set<MediaType>
+    @Namespace private var segment
+
+    // Snapshot values rather than comparing bindings, which both read the latest state.
+    struct Selection: Equatable {
+        let list: ListState
+        let filter: MediaType?
+        let favoritesOnly: Bool
+        let special: ContentView.Special?
+        let showSearch: Bool
+        let showSettings: Bool
+    }
+    let selection: Selection
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.selection == rhs.selection && lhs.enabledTypes == rhs.enabledTypes
+    }
+
     // MARK: - Footer
 
-    private var types: [MediaType] { MediaType.allCases.filter(store.enabledTypes.contains) }
-    private var showsStream: Bool { store.enabledTypes.contains(.movie) || store.enabledTypes.contains(.tv) }
-    private var showsDeals: Bool { store.enabledTypes.contains(.game) }
+    private var types: [MediaType] { MediaType.allCases.filter(enabledTypes.contains) }
+    private var showsStream: Bool { enabledTypes.contains(.movie) || enabledTypes.contains(.tv) }
+    private var showsDeals: Bool { enabledTypes.contains(.game) }
     private var clearsOnTap: Bool { special != nil || favoritesOnly }
 
     private var status: String {
@@ -84,7 +120,7 @@ struct ContentView: View {
         }
     }
 
-    private var footer: some View {
+    var body: some View {
         VStack(spacing: 10) {
             Text(status.uppercased())
                 .font(.voidReadout)
