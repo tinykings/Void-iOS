@@ -130,18 +130,7 @@ struct SearchResultCard: View {
                             : daysUntilRelease != nil ? Color.voidAmber : Color.voidBorder,
                         lineWidth: list == nil && daysUntilRelease != nil ? 2 : 1))
                     .overlay(alignment: .topTrailing) {
-                        if list == .playlist {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(Color.voidCyan).padding(6).shadow(radius: 3)
-                        } else if list == .history {
-                            // The footer's History icon, in History's green.
-                            Image(systemName: "clock.arrow.circlepath")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(Color.voidOnAccent)
-                                .frame(width: 18, height: 18)
-                                .background(Color.voidHistory, in: Circle())
-                                .padding(6).shadow(radius: 3)
-                        }
+                        PosterStatusFold(item: store.item(media.key))
                     }
                 Text(media.title).font(.caption.weight(.semibold)).lineLimit(2)
                 if let recommendationSource {
