@@ -66,7 +66,8 @@ const daysUntil = value => {
 let current = null;       // the last view from site.mjs
 let lastMessage = null;
 let tab = "playlist";
-let typeFilter = null;
+const selectedTypes = new Set();
+const matchesType = media => !selectedTypes.size || selectedTypes.has(media.mediaType);
 let favoritesOnly = false;
 let query = "";
 let results = [];
@@ -150,25 +151,29 @@ function render() {
     button.addEventListener("click", onClick);
     chips.append(button);
   };
-  chip("All", !typeFilter, () => { typeFilter = null; render(); });
-  for (const type of MEDIA_TYPES) chip(TYPE_PLURAL[type], typeFilter === type, () => { typeFilter = typeFilter === type ? null : type; render(); });
+  chip("All", !selectedTypes.size, () => { selectedTypes.clear(); render(); });
+  for (const type of MEDIA_TYPES) chip(TYPE_PLURAL[type], selectedTypes.has(type), () => {
+    if (selectedTypes.has(type)) selectedTypes.delete(type);
+    else selectedTypes.add(type);
+    render();
+  });
   if (tab === "history" && !query) chip("♥ Favorites", favoritesOnly, () => { favoritesOnly = !favoritesOnly; render(); });
 
   const state = current.state;
   const grid = $("#grid");
   let cards;
   if (query) {
-    const shown = results.filter(media => !typeFilter || media.mediaType === typeFilter);
+    const shown = results.filter(matchesType);
     cards = shown.map(media => card(media, state ? itemFor(state, media) : null, null));
     $("#status").textContent = searching ? "Searching…" : shown.length ? `${shown.length} results` : `Nothing found for “${query}”.`;
   } else if (tab === "trending") {
-    const shown = (trending ?? []).filter(media => !typeFilter || media.mediaType === typeFilter);
+    const shown = (trending ?? []).filter(matchesType);
     cards = shown.map(media => card(media, state ? itemFor(state, media) : null, null));
     $("#status").textContent = trending === null ? (trendingError ?? "Loading what's trending…")
       : shown.length ? [`Trending this week: ${shown.length}.`, shown.some(media => daysUntil(media.releaseDate) > 0) && "Amber posters aren't out yet.", trendingError].filter(Boolean).join(" ")
       : trendingError ?? "Nothing trending to show.";
   } else {
-    const entries = state ? listItems(state, tab, { type: typeFilter, favoritesOnly: tab === "history" && favoritesOnly, details: name => details[name] }) : [];
+    const entries = state ? listItems(state, tab, { enabled: selectedTypes.size ? [...selectedTypes] : MEDIA_TYPES, favoritesOnly: tab === "history" && favoritesOnly, details: name => details[name] }) : [];
     cards = entries.map(({ name, item }) => card(mediaOf(item), item, name));
     $("#status").textContent = entries.length
       ? `${entries.length} on your ${tab === "playlist" ? "Playlist" : "History"}`
