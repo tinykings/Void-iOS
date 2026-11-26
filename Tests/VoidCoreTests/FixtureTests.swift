@@ -37,7 +37,7 @@ final class FixtureTests: XCTestCase {
                                         image: "/u3bZgnGQ9T01sWNhyveQz0wH0Hl.jpg", releaseDate: "2011-04-17", list: .history,
                                         addedAt: "2026-11-13T22:04:05.123Z", isFavorite: true, rating: 5,
                                         returnedFor: "2026-11-10", pinnedAt: "2026-11-14T08:00:00.000Z"))
-        XCTAssertTrue(item.isPinned)
+        XCTAssertFalse(item.isPinned, "Legacy History pins are ignored")
         // And writing it back gives the same fields.
         XCTAssertEqual(SyncCodec.fields(item), fields)
     }

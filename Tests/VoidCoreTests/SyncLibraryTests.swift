@@ -53,12 +53,12 @@ final class SyncLibraryTests: XCTestCase {
         XCTAssertEqual(library.item(show.key)?.isPinned, false)
         XCTAssertNotNil(library.item(show.key)?.pinnedAt)
 
-        // Pinning there pins it in History; unpinning clears it.
+        // History cannot be pinned, including legacy pins with a recent timestamp.
         library.togglePin(show.key, now: t0.addingTimeInterval(3))
-        XCTAssertEqual(library.item(show.key)?.isPinned, true)
+        XCTAssertEqual(library.item(show.key)?.isPinned, false)
         library.togglePin(show.key, now: t0.addingTimeInterval(4))
         XCTAssertEqual(library.item(show.key)?.isPinned, false)
-        XCTAssertNil(library.item(show.key)?.pinnedAt)
+        XCTAssertEqual(library.item(show.key)?.pinnedAt, SyncCodec.iso(t0.addingTimeInterval(1)))
 
         // Removing clears it, and a removed item can't be pinned.
         library.togglePin(show.key, now: t0.addingTimeInterval(5))

@@ -56,7 +56,7 @@ function itemFromMedia(media, list, now) {
 // later than the pin, so the pin lapses without its own write, and a client that
 // doesn't know about pins can't leave a stale one behind.
 export function isPinned(item) {
-  if (!item || item.list === "none" || !item.pinnedAt) return false;
+  if (!item || item.list !== "playlist" || !item.pinnedAt) return false;
   return Date.parse(item.pinnedAt) >= Date.parse(item.addedAt);
 }
 
@@ -117,10 +117,10 @@ export function toggleFavorite(state, name) {
   return state;
 }
 
-// Pins an item to the top of the Playlist or History, whichever it's in, or unpins it.
+// Pins a Playlist item to the top, or unpins it.
 export function togglePin(state, name, now = Date.now()) {
   const item = state.items[name];
-  if (!item || item.list === "none") return state;
+  if (!item || item.list !== "playlist") return state;
   return write(state, { ...item, pinnedAt: isPinned(item) ? null : isoNow(now) }, ["pin"]);
 }
 

@@ -81,7 +81,7 @@ struct PosterCard: View {
                     .aspectRatio(2 / 3, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10)
-                        .stroke(item.list == .history && item.isFavorite ? Color.pink : Color.voidBorder, lineWidth: 1))
+                        .stroke(item.isPinned ? Color.voidCyan : item.list == .history && item.isFavorite ? Color.pink : Color.voidBorder, lineWidth: item.isPinned ? 2.5 : 1))
                     .overlay(alignment: .bottomLeading) {
                         if let badge {
                             Text(badge.uppercased())
@@ -133,7 +133,7 @@ struct LibraryActions: View {
                     : Label("Favorite", systemImage: "heart")
             }
         }
-        if let item, item.list != .none {
+        if let item, item.list == .playlist {
             Button { store.togglePin(media.key) } label: {
                 item.isPinned
                     ? Label("Unpin", systemImage: "pin.slash")

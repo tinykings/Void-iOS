@@ -88,10 +88,11 @@ remote copy's values are taken unless the item is new here.
 
 ### Pins
 
-- An item counts as pinned only while `list` is `playlist` or `history` and
+- An item counts as pinned only while `list` is `playlist` and
   `pinnedAt` is at or after `addedAt`, meaning it was pinned in the list it's in now.
   Moving lists, removing it, or a return to the Playlist sets a later `addedAt`, so the
   pin lapses without its own write. Removing also clears `pinnedAt`.
+- History pins from older clients are ignored. Pinning is only available in Playlist.
 - Pinning writes `pinnedAt = now` (the **pin** group); unpinning writes it empty.
 - Pinned items sort before the list's usual order, the most recently pinned first.
 - `pinnedAt` was added without changing `schemaVersion`. Clients from before it never

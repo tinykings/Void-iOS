@@ -92,10 +92,8 @@ test("a pin belongs to the list it was pinned in, as on iOS", () => {
   assert.equal(isPinned(state.items[showName]), false);
   assert.ok(state.items[showName].pinnedAt);
 
-  state = togglePin(state, showName, T + 3000);
-  assert.equal(isPinned(state.items[showName]), true);
-  state = togglePin(state, showName, T + 4000);
-  assert.equal(state.items[showName].pinnedAt, null);
+  assert.equal(togglePin(state, showName, T + 3000), state);
+  assert.equal(isPinned({ ...state.items[showName], pinnedAt: new Date(T + 4000).toISOString() }), false);
 
   // Removing clears it, and a removed item can't be pinned.
   state = togglePin(state, showName, T + 5000);

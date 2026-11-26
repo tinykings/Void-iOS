@@ -61,7 +61,7 @@ struct SyncedItem: Codable, Equatable, Sendable {
     // `addedAt` later than the pin, so the pin lapses without its own write, and a
     // client that doesn't know about pins can't leave a stale one behind.
     var isPinned: Bool {
-        guard list != .none, let pinnedAt, let pinned = SyncCodec.date(pinnedAt),
+        guard list == .playlist, let pinnedAt, let pinned = SyncCodec.date(pinnedAt),
               let added = SyncCodec.date(addedAt) else { return false }
         return pinned >= added
     }
@@ -201,9 +201,9 @@ struct SyncLibrary: Codable, Equatable, Sendable {
         write(entry, [.favorite])
     }
 
-    // Pins an item to the top of the Playlist or History, whichever it's in, or unpins it.
+    // Pins a Playlist item to the top, or unpins it.
     mutating func togglePin(_ key: MediaKey, now: Date = Date()) {
-        guard var entry = item(key), entry.list != .none else { return }
+        guard var entry = item(key), entry.list == .playlist else { return }
         entry.pinnedAt = entry.isPinned ? nil : SyncCodec.iso(now)
         write(entry, [.pin])
     }

@@ -227,7 +227,7 @@ function renderDetails() {
   action(item?.list === "history" ? "✓ Played" : "Mark Played", item?.list === "history", () => site.toggleHistory(media));
   if (item?.list === "history" || item?.isFavorite) action(item?.isFavorite ? "♥ Favorite" : "♡ Favorite", Boolean(item?.isFavorite), () => site.toggleFavorite(name));
   // Pins it to the top of the Playlist or History, whichever it's in.
-  if (item && item.list !== "none") action(isPinned(item) ? "Pinned" : "Pin to Top", isPinned(item), () => site.togglePin(name));
+  if (item?.list === "playlist") action(isPinned(item) ? "Pinned" : "Pin to Top", isPinned(item), () => site.togglePin(name));
   body.append(actions);
 
   if (media.mediaType !== "game") {

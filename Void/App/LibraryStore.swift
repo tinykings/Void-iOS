@@ -98,7 +98,7 @@ final class LibraryStore: ObservableObject {
                              nextEpisodeAirDate: media?.nextEpisodeToAir?.airDate, addedAt: item.addedAt)
             })
         default:
-            return LibraryRules.pinnedFirst(items.sorted { $0.addedAt > $1.addedAt })
+            return items.sorted { $0.addedAt > $1.addedAt }
         }
     }
 

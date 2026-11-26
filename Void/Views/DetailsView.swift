@@ -190,9 +190,9 @@ struct DetailsView: View {
         .accessibilityLabel(label)
     }
 
-    // Pins it to the top of the Playlist or History, whichever it's in.
+    // Pins a Playlist item to the top.
     @ViewBuilder private var pinButton: some View {
-        if let item, item.list != .none {
+        if let item, item.list == .playlist {
             let pinned = item.isPinned
             Button { store.togglePin(seed.key) } label: {
                 Image(systemName: pinned ? "pin.fill" : "pin")
@@ -203,7 +203,7 @@ struct DetailsView: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(pinned ? Color.voidCyan : Color.voidBorder))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(pinned ? "Unpin" : "Pin to top of \(item.list == .playlist ? "Playlist" : "History")")
+            .accessibilityLabel(pinned ? "Unpin" : "Pin to top of Playlist")
             .sensoryFeedback(.selection, trigger: pinned)
         }
     }
