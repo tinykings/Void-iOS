@@ -64,13 +64,16 @@ struct RecommendationsView: View {
         requestID = request
         loading = !favorites.isEmpty
         failed = false
-        recommendations = []
-        sourceTitles = [:]
+        if favorites.isEmpty {
+            recommendations = []
+            sourceTitles = [:]
+        }
         defer {
             if requestID == request { loading = false }
         }
 
         var selection: [Media] = []
+        var sources: [MediaKey: String] = [:]
         var seen = Set<MediaKey>()
         for seed in favorites.shuffled() {
             guard selection.count < 50 else { break }
@@ -82,16 +85,21 @@ struct RecommendationsView: View {
                 var picked = 0
                 for media in titles.shuffled() where !saved.contains(media.key) && seen.insert(media.key).inserted {
                     selection.append(media)
-                    sourceTitles[media.key] = store.item(seed)?.title
+                    sources[media.key] = store.item(seed)?.title
                     picked += 1
                     if picked == 5 || selection.count == 50 { break }
                 }
-                // Random picks for variety, then order by TMDB popularity.
-                recommendations = selection.sorted { $0.popularity > $1.popularity }
             } catch {
                 if Task.isCancelled || requestID != request { return }
                 failed = true
             }
+        }
+
+        guard !Task.isCancelled, requestID == request else { return }
+        // Keep the current list through refreshes that cannot provide replacements.
+        if !selection.isEmpty || !failed {
+            recommendations = selection.sorted { $0.popularity > $1.popularity }
+            sourceTitles = sources
         }
     }
 }
