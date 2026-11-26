@@ -81,8 +81,7 @@ struct PosterCard: View {
                     .aspectRatio(2 / 3, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10)
-                        .stroke(item.isPinned ? Color.voidCyan : Color.voidBorder, lineWidth: item.isPinned ? 2.5 : 1))
-                    .overlay(alignment: .topTrailing) { marks }
+                        .stroke(item.list == .history && item.isFavorite ? Color.pink : Color.voidBorder, lineWidth: 1))
                     .overlay(alignment: .bottomLeading) {
                         if let badge {
                             Text(badge.uppercased())
@@ -106,10 +105,6 @@ struct PosterCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel([media.title, item.isPinned ? "pinned" : nil, item.isFavorite ? "favorite" : nil, badge]
             .compactMap { $0 }.joined(separator: ", "))
-    }
-
-    private var marks: some View {
-        PosterStatusFold(item: item)
     }
 
 }
@@ -144,50 +139,6 @@ struct LibraryActions: View {
                     ? Label("Unpin", systemImage: "pin.slash")
                     : Label("Pin to Top", systemImage: "pin")
             }
-        }
-    }
-}
-
-// A revealed status corner with the poster's turned-back edge alongside it.
-struct PosterStatusFold: View {
-    let item: SyncedItem?
-
-    private var color: Color {
-        item?.isFavorite == true ? .pink : item?.list == .playlist ? .voidCyan : .voidHistory
-    }
-
-    private var label: String {
-        item?.isFavorite == true ? "Favorite" : item?.list == .playlist ? "Watchlist" : "Watched"
-    }
-
-    var body: some View {
-        if let item, item.isFavorite || item.list == .playlist || item.list == .history {
-            ZStack(alignment: .topTrailing) {
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: 0))
-                    path.addLine(to: CGPoint(x: 44, y: 0))
-                    path.addLine(to: CGPoint(x: 44, y: 44))
-                    path.closeSubpath()
-                }
-                .fill(color)
-                Image(systemName: item.isFavorite ? "heart.fill" : item.list == .playlist ? "bookmark.fill" : "checkmark")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color.voidOnAccent)
-                    .padding(.top, 6)
-                    .padding(.trailing, 6)
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: 0))
-                    path.addLine(to: CGPoint(x: 44, y: 44))
-                    path.addLine(to: CGPoint(x: 8, y: 36))
-                    path.closeSubpath()
-                }
-                .fill(LinearGradient(colors: [color.opacity(0.95), color.opacity(0.45)], startPoint: .topTrailing, endPoint: .bottomLeading))
-                .shadow(color: .black.opacity(0.4), radius: 2, x: -1, y: 2)
-            }
-            .frame(width: 44, height: 44)
-            .clipShape(UnevenRoundedRectangle(topTrailingRadius: 10))
-            .accessibilityLabel(label)
-            .allowsHitTesting(false)
         }
     }
 }

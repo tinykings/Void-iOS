@@ -118,20 +118,21 @@ struct SearchResultCard: View {
     @EnvironmentObject private var store: LibraryStore
 
     var body: some View {
-        let list = store.item(media.key)?.list
+        let item = store.item(media.key)
+        let list = item?.list
+        let hasStatus = item?.isFavorite == true || list == .playlist || list == .history
         MediaLink(media: media) {
             VStack(alignment: .leading, spacing: 6) {
                 PosterImage(path: media.posterPath)
                     .aspectRatio(2 / 3, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
-                    // The Playlist and History colors win; the countdown still shows below.
+                    // Favorite takes priority over list status and the upcoming-release border.
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(
-                        list == .playlist ? Color.voidCyan : list == .history ? Color.voidHistory
+                        item?.isFavorite == true ? Color.pink
+                            : list == .playlist ? Color.voidCyan : list == .history ? Color.voidHistory
                             : daysUntilRelease != nil ? Color.voidAmber : Color.voidBorder,
-                        lineWidth: list == nil && daysUntilRelease != nil ? 2 : 1))
-                    .overlay(alignment: .topTrailing) {
-                        PosterStatusFold(item: store.item(media.key))
-                    }
+                        lineWidth: !hasStatus && daysUntilRelease != nil ? 2 : 1))
+
                 Text(media.title).font(.caption.weight(.semibold)).lineLimit(2)
                 if let recommendationSource {
                     Text(recommendationSource)
@@ -144,5 +145,7 @@ struct SearchResultCard: View {
         }
         .buttonStyle(.plain)
         .contextMenu { LibraryActions(media: media) }
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(item?.isFavorite == true ? "Favorite" : list == .playlist ? "Playlist" : list == .history ? "History" : "")
     }
 }
