@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var store: LibraryStore
@@ -6,6 +7,9 @@ struct SettingsView: View {
     @AppStorage(DisplaySettings.showTitlesKey) private var showTitles = DisplaySettings.showTitlesDefault
     @AppStorage(ReleaseNotifier.enabledKey) private var notify = false
     @State private var notificationsDenied = false
+    @State private var exporting = false
+    @State private var exportDocument = LibraryTextDocument(text: "")
+    @State private var exportError: String?
     @State private var keyDraft = ""
     @State private var keyMessage: String?
     @State private var checkingKey = false
@@ -109,6 +113,17 @@ struct SettingsView: View {
                     Text("Your library syncs through your private iCloud database with your other devices and with [void] on the web at void.tinyk.ing/app (sign in with the same Apple Account).")
                 }
 
+                Section {
+                    Button {
+                        exportDocument = LibraryTextDocument(text: store.library.exportText)
+                        exporting = true
+                    } label: {
+                        Label("Export Library", systemImage: "square.and.arrow.up")
+                    }
+                } footer: {
+                    Text("Save your favorites, playlist, and history as a text file, including hidden media types. Favorites are listed first.")
+                }
+
                 Section("About") {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
                     Link("Privacy Policy", destination: URL(string: "https://void.tinyk.ing/privacy.html")!)
@@ -120,6 +135,17 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+            .fileExporter(isPresented: $exporting, document: exportDocument,
+                          contentType: .plainText, defaultFilename: "void-library.txt") { result in
+                if case .failure(let error) = result { exportError = error.localizedDescription }
+            }
+            .alert("Export Failed", isPresented: Binding(
+                get: { exportError != nil }, set: { if !$0 { exportError = nil } }
+            )) {
+                Button("OK", role: .cancel) { exportError = nil }
+            } message: {
+                Text(exportError ?? "")
             }
             .voidScreen()
         }
@@ -174,5 +200,24 @@ struct SettingsView: View {
         } catch {
             keyMessage = error.localizedDescription
         }
+    }
+}
+
+private struct LibraryTextDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.plainText] }
+    var text: String
+
+    init(text: String) { self.text = text }
+
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents,
+              let text = String(data: data, encoding: .utf8) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        self.text = text
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(text.utf8))
     }
 }
